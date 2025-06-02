@@ -14,6 +14,8 @@ Al activarse se crea la tabla `wp_empleados` donde se almacenan los datos.
 
 Los códigos QR apuntan a la ruta `/verificar-empleado/{id}/` en tu sitio.
 
+Para un funcionamiento completo, añade las imágenes `activo.png`, `inactivo.png` y `fondo.png` en la carpeta del plugin.
+
 ## Requerimientos
 - WordPress 5.0 o superior.
 - PHP 7.0 o superior.
