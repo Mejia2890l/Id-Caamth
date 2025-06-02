@@ -116,12 +116,10 @@ function formulario_agregar_empleado() {
     // Cargar catalogo.js
     wp_enqueue_script('catalogo-js', plugin_dir_url(__FILE__) . 'catalogo.js', [], null, true);
 
-    // Cargar catalogoEditEmpleado.js
-    wp_enqueue_script('catalogoEditEmpleado-js',plugin_dir_url(__FILE__). 'catalogoEditEmpleado.js', [], null, true);
 
     ob_start();
 
-    if (isset($_POST['guardar_empleado'])) {
+if (isset($_POST['guardar_empleado']) && check_admin_referer('guardar_empleado_action','guardar_empleado_nonce')) {
 
         if (
             // El formulario no permite campos vacíos, ya que, al momento de recargar la página, reenviaba la información previamente cargada (habría duplicidad de registros)
@@ -190,7 +188,7 @@ function formulario_agregar_empleado() {
 
     // Editar empleado
 
-    if (isset($_POST['id_empleado'])) {
+    if (isset($_POST['id_empleado']) && check_admin_referer('editar_empleado_action','editar_empleado_nonce')) {
         $id_edit = intval($_POST['id_empleado']);
         $nombre_edit = sanitize_text_field($_POST['nombre']);
         $departamento_edit = sanitize_text_field($_POST['edit_departamento']);
@@ -256,6 +254,7 @@ function formulario_agregar_empleado() {
 
     ?>
     <form method="post" enctype="multipart/form-data" style="max-width: 600px; margin: 0 auto; font-size: 18px;">
+    <?php wp_nonce_field("guardar_empleado_action","guardar_empleado_nonce"); ?>
         <input type="text" name="numero_empleado" placeholder="Número de empleado" required><br><br>
         <input type="text" name="nombre" placeholder="Nombre completo" required><br><br>
 
@@ -282,39 +281,17 @@ function formulario_agregar_empleado() {
 
 <?php 
 
-    $conn = mysqli_connect("localhost", "caamth2025", "RbrfM5Q9b6TCZwX", "caamth2025_wp742"); // Se realiza una conexión a la base de datos
-
-    if (!$conn){
-        die("Error en la conexión: " . mysqli_connect_error()); // En caso de existir algún error al realizar la conexión
-    }
-
-    // Conteo de empleados
-
-    $contar_empleados = "SELECT COUNT(*) FROM $tabla"; // Seleccionar el total de empleados
-    $total_empleados = mysqli_query($conn, $contar_empleados);
-    $contar_empleados_activos = "SELECT COUNT(*) FROM $tabla WHERE estatus = 'Activo'"; // Seleccionar el total de empleados activos
-    $total_empleados_activos = mysqli_query($conn, $contar_empleados_activos);
-    $contar_empleados_inactivos = "SELECT COUNT(*) FROM $tabla WHERE estatus = 'Inactivo'"; // Seleccionar el total de empleados inactivos
-    $total_empleados_inactivos = mysqli_query($conn, $contar_empleados_inactivos);
-
-    // Seleccionar empleados y su información
-
-    $select_empleados = "SELECT * FROM $tabla ORDER BY numero"; // Selecciona los empleados ordenándolos por su número de empleado
-    $ejecutar_select = mysqli_query($conn, $select_empleados); // Se envía a la tabla para mostrar el contenido dentro de las columnas
-
-    if ($total_empleados && $total_empleados_activos) {
-        $row = mysqli_fetch_array($total_empleados); // Muestra el conteo total de empleados
-        $total_empleados = $row[0];
-        $row_activos = mysqli_fetch_array($total_empleados_activos); // Muestra el conteo de empleados activos
-        $total_empleados_activos = $row_activos[0];
-        $row_inactivos = mysqli_fetch_array($total_empleados_inactivos); // Muestra el conteo de empleados inactivos
-        $total_empleados_inactivos = $row_inactivos[0];
-        ?><p>Total de empleados: <?php echo $total_empleados?></p><?php
-        ?><p>Empleados activos: <?php echo $total_empleados_activos?></p><?php
-        ?><p>Empleados inactivos: <?php echo $total_empleados_inactivos?></p><?php
-    } else {
-        echo "Error: " . mysqli_error($conn);
-    }
+$total_empleados = $wpdb->get_var("SELECT COUNT(*) FROM $tabla");
+$total_empleados_activos = $wpdb->get_var("SELECT COUNT(*) FROM $tabla WHERE estatus = 'Activo'");
+$total_empleados_inactivos = $wpdb->get_var("SELECT COUNT(*) FROM $tabla WHERE estatus = 'Inactivo'");
+$empleados_lista = $wpdb->get_results("SELECT * FROM $tabla ORDER BY numero", ARRAY_A);
+if ($empleados_lista !== null) {
+    echo '<p>Total de empleados: ' . esc_html($total_empleados) . '</p>';
+    echo '<p>Empleados activos: ' . esc_html($total_empleados_activos) . '</p>';
+    echo '<p>Empleados inactivos: ' . esc_html($total_empleados_inactivos) . '</p>';
+} else {
+    echo "Error en la consulta";
+}
 
 ?>
 
@@ -617,17 +594,16 @@ button[title="Editar empleado"]:hover {
 <tbody>
 <!-- Contenido traído desde la base de datos -->
 <?php
-        while($mostrar_empleados = mysqli_fetch_array($ejecutar_select)){
-            ?>
 
+<?php foreach ($empleados_lista as $mostrar_empleados) { ?>
             <tr>
-                <td><?php echo $mostrar_empleados['numero']?></td>
-                <td><?php echo $mostrar_empleados['nombre']?></td>
-                <td><?php echo $mostrar_empleados['departamento']?></td>
-                <td><?php echo $mostrar_empleados['puesto']?></td>
-                <td><?php echo $mostrar_empleados['estatus']?></td>
+                <td><?php echo esc_html($mostrar_empleados['numero']); ?></td>
+                <td><?php echo esc_html($mostrar_empleados['nombre']); ?></td>
+                <td><?php echo esc_html($mostrar_empleados['departamento']); ?></td>
+                <td><?php echo esc_html($mostrar_empleados['puesto']); ?></td>
+                <td><?php echo esc_html($mostrar_empleados['estatus']); ?></td>
                 <td>
-                    <?php 
+                    <?php
                         $json_empleado = htmlspecialchars(json_encode($mostrar_empleados), ENT_QUOTES, 'UTF-8');
                         $id_empleado = intval($mostrar_empleados['id']);
                         $numero_empleado = intval($mostrar_empleados['numero']);
@@ -639,14 +615,9 @@ button[title="Editar empleado"]:hover {
                     <button type="button" title="Editar empleado" onclick="openEditModal(<?php echo $json_empleado; ?>)">Editar</button>
                     <button type="button" class="button-delete" data-id="<?php echo $id_empleado; ?>">Eliminar</button>
                     <button type="button" class="button-download" onClick="descargarQR('<?php echo $qr_url; ?>', 'qr_<?php echo $nombre_empleado?>_<?php echo $numero_empleado; ?>.png')">QR</button>
+                </td>
             </tr>
-
-<?php
-        }
-
-mysqli_close($conn);
-
-?>
+<?php } ?>
 
 </tbody>
 
@@ -779,6 +750,7 @@ mysqli_close($conn);
 
 <div id="editEmployeeModal" style="display: none;">
     <form action="" id="editEmployeeForm" method="POST" enctype="multipart/form-data">
+        <?php wp_nonce_field("editar_empleado_action","editar_empleado_nonce"); ?>
         <input type="hidden" name="id_empleado" id="edit_id_empleado" class="nombre-empleado">
         <label>Nombre completo: </label><input type="text" name="nombre" id="edit_nombre"><br>
         <label for="edit_departamento">Departamento: </label>

@@ -1,8 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const departamentoSelect = document.getElementById('departamento');
-    const puestoSelect = document.getElementById('puesto');
-  
-    const puestosPorDepartamento = {
+window.catalogo = {
       "Dirección General": ["Auxiliar de Atención Ciudadana",
   "Auxiliar de Concertación Ciudadana",
   "Coordinador de Atención Ciudadana",
@@ -182,29 +178,31 @@ document.addEventListener('DOMContentLoaded', () => {
         "Coordinador de Control Interno y Evaluación de Desempeño",
         "Titular de Órgano Interno de Control"]
     };
-  
-    // Llenar select de departamento
-    Object.keys(puestosPorDepartamento).forEach(dep => {
-      const option = document.createElement('option');
-      option.value = dep;
-      option.textContent = dep;
-      departamentoSelect.appendChild(option);
-    });
-  
-    // Cuando se cambia el departamento
-    departamentoSelect.addEventListener('change', () => {
-      const departamento = departamentoSelect.value;
-      const puestos = puestosPorDepartamento[departamento] || [];
-  
-      // Limpiar puestos anteriores
-      puestoSelect.innerHTML = '<option value="">Seleccione un puesto</option>';
-  
-      puestos.forEach(puesto => {
+function iniciarCatalogo(departamentoId, puestoId) {
+    const departamentoSelect = document.getElementById(departamentoId);
+    const puestoSelect = document.getElementById(puestoId);
+    if (!departamentoSelect || !puestoSelect) {
+        return;
+    }
+    Object.keys(window.catalogo).forEach(dep => {
         const option = document.createElement('option');
-        option.value = puesto;
-        option.textContent = puesto;
-        puestoSelect.appendChild(option);
-      });
+        option.value = dep;
+        option.textContent = dep;
+        departamentoSelect.appendChild(option);
     });
-  });
-  
+    departamentoSelect.addEventListener('change', () => {
+        const puestos = window.catalogo[departamentoSelect.value] || [];
+        puestoSelect.innerHTML = '<option value="">Seleccione un puesto</option>';
+        puestos.forEach(puesto => {
+            const opt = document.createElement('option');
+            opt.value = puesto;
+            opt.textContent = puesto;
+            puestoSelect.appendChild(opt);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    iniciarCatalogo('departamento', 'puesto');
+    iniciarCatalogo('edit_departamento', 'edit_puesto');
+
