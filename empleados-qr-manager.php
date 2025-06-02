@@ -61,6 +61,15 @@ function ve_verificar_empleado_shortcode() {
 
     $empleado = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tabla WHERE id = %d", $empleado_id));
 
+    $plugin_url = plugin_dir_url(__FILE__);
+    $foto_url = $empleado ? $empleado->foto : '';
+    if ($empleado && strtolower($empleado->estatus) === 'inactivo') {
+        $foto_url = $plugin_url . 'inactivo.png';
+    } elseif ($empleado && empty($foto_url)) {
+        $foto_url = $plugin_url . 'activo.png';
+    }
+    $fondo_url = $plugin_url . 'fondo.png';
+
     if (!$empleado) {
         echo '<p style="text-align: center; color: red;">Empleado no encontrado.</p>';
         return ob_get_clean();
@@ -69,12 +78,18 @@ function ve_verificar_empleado_shortcode() {
     ?>
     <head>
     <link rel="stylesheet" href="cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        @media (max-width:600px){
+            .ve-container{font-size:16px;}
+            .ve-photo img{max-width:100%;}
+        }
+    </style>
     </head>
-    <div style="max-width: 600px; margin: 0 auto; text-align: center; font-family: sans-serif; font-size: 18px;">
+    <div class="ve-container" style="max-width: 600px; width:100%; margin: 0 auto; text-align: center; font-family: sans-serif; font-size: 18px; padding:15px; box-sizing:border-box;">
     <h2 style="font-size: 26px;">Verificación de Empleado</h2>
-    <?php if (!empty($empleado->foto)) : ?>
-        <img src="<?php echo esc_url($empleado->foto); ?>" style="max-width: 180px; margin-bottom: 15px; border-radius: 10px;"><br>
-    <?php endif; ?>
+    <div class="ve-photo" style="background:url('<?php echo esc_url($fondo_url); ?>') center/cover no-repeat; display:inline-block; padding:10px; border-radius:10px; margin-bottom:15px;">
+        <img src="<?php echo esc_url($foto_url); ?>" style="max-width:180px; width:100%; height:auto; border-radius:10px;">
+    </div>
     <p><strong required>Número de Empleado:</strong><br> <?php echo esc_html($empleado->numero); ?></p>
     <p><strong required>Nombre:</strong><br> <?php echo esc_html($empleado->nombre); ?></p>
     <p><strong required>Departamento:</strong><br> <?php echo esc_html($empleado->departamento); ?></p>
@@ -522,6 +537,11 @@ button {
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+button:hover {
+    transform: scale(1.05);
 }
 
 /* Botón ver */
