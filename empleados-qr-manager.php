@@ -1,4 +1,5 @@
-<?php session_start();
+<?php
+session_start();
 /**
  * Plugin Name: Verificador de Empleados
  * Description: Plugin para verificar empleados por ID a través de una URL con código QR. Usa URLs como /verificar-empleado/123.
@@ -7,12 +8,6 @@
  */
 
 // === SESIÓN Y CONSTANTES DE LOGIN ===
-function ve_start_session() {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-}
-add_action('init', 've_start_session', 1);
 
 define('VE_LOGIN_CREDENTIALS', [
     'RH' => '&>1yBj|h5M7\\',
