@@ -1,5 +1,11 @@
 <?php
 session_start();
+
+add_action('init', function () {
+    if (!session_id()) {
+        session_start();
+    }
+});
 /**
  * Plugin Name: Verificador de Empleados
  * Description: Plugin para verificar empleados por ID a través de una URL con código QR. Usa URLs como /verificar-empleado/123.
