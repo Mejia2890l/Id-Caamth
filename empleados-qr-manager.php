@@ -87,7 +87,7 @@ function ve_verificar_empleado_shortcode() {
     </head>
     <div class="ve-container" style="max-width: 600px; width:100%; margin: 0 auto; text-align: center; font-family: sans-serif; font-size: 18px; padding:15px; box-sizing:border-box;">
     <h2 style="font-size: 26px;">Verificación de Empleado</h2>
-    <div class="ve-photo" style="background:url('<?php echo esc_url($fondo_url); ?>') center/cover no-repeat; display:inline-block; padding:10px; border-radius:10px; margin-bottom:15px;">
+    <div class="ve-photo" style="background:url('<?php echo esc_url($fondo_url); ?>') center/contain no-repeat; display:inline-block; padding:10px; border-radius:10px; margin-bottom:15px;">
         <img src="<?php echo esc_url($foto_url); ?>" style="max-width:180px; width:100%; height:auto; border-radius:10px;">
     </div>
     <p><strong required>Número de Empleado:</strong><br> <?php echo esc_html($empleado->numero); ?></p>
@@ -301,9 +301,11 @@ $total_empleados_activos = $wpdb->get_var("SELECT COUNT(*) FROM $tabla WHERE est
 $total_empleados_inactivos = $wpdb->get_var("SELECT COUNT(*) FROM $tabla WHERE estatus = 'Inactivo'");
 $empleados_lista = $wpdb->get_results("SELECT * FROM $tabla ORDER BY numero", ARRAY_A);
 if ($empleados_lista !== null) {
-    echo '<p>Total de empleados: ' . esc_html($total_empleados) . '</p>';
-    echo '<p>Empleados activos: ' . esc_html($total_empleados_activos) . '</p>';
-    echo '<p>Empleados inactivos: ' . esc_html($total_empleados_inactivos) . '</p>';
+    echo '<div style="display:flex; gap:15px; flex-wrap:wrap; margin-bottom:20px;">';
+    echo '<div style="flex:1; min-width:150px; border:1px solid #ccc; padding:10px; border-radius:6px;">Total de empleados: ' . esc_html($total_empleados) . '</div>';
+    echo '<div style="flex:1; min-width:150px; border:1px solid #ccc; padding:10px; border-radius:6px;">Empleados activos: ' . esc_html($total_empleados_activos) . '</div>';
+    echo '<div style="flex:1; min-width:150px; border:1px solid #ccc; padding:10px; border-radius:6px;">Empleados inactivos: ' . esc_html($total_empleados_inactivos) . '</div>';
+    echo '</div>';
 } else {
     echo "Error en la consulta";
 }
