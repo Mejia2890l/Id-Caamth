@@ -14,8 +14,11 @@ function ve_start_session() {
 }
 add_action('init', 've_start_session', 1);
 
-define('VE_LOGIN_USER', 'RH');
-define('VE_LOGIN_PASS', '&>1yBj|h5M7\\');
+define('VE_LOGIN_CREDENTIALS', [
+    'RH' => '&>1yBj|h5M7\',
+    'Diseño' => 'ANdymAorCe',
+    'Sistemas' => 'loSeNUsHOl'
+]);
 define('VE_LOGIN_SLUG', 've-login');
 
 function ve_login_template_redirect() {
@@ -1456,7 +1459,7 @@ function ve_login_shortcode(){
     if (isset($_POST['ve_user']) && isset($_POST['ve_pass'])) {
         $user = sanitize_text_field($_POST['ve_user']);
         $pass = $_POST['ve_pass'];
-        if ($user === VE_LOGIN_USER && $pass === VE_LOGIN_PASS) {
+        if (isset(VE_LOGIN_CREDENTIALS[$user]) && $pass === VE_LOGIN_CREDENTIALS[$user]) {
             $_SESSION['ve_logged_in'] = true;
             $redirect = !empty($_SESSION['ve_redirect']) ? $_SESSION['ve_redirect'] : home_url('/');
             unset($_SESSION['ve_redirect']);
@@ -1469,18 +1472,26 @@ function ve_login_shortcode(){
 
     ob_start();
     ?>
-    <div style="display:flex;justify-content:center;align-items:center;min-height:100vh;">
-        <form method="post" style="text-align:center;max-width:300px;width:100%;padding:20px;">
+    <div class="ve-login-wrapper">
+        <form class="ve-login-form" method="post">
             <img src="<?php echo esc_url(plugin_dir_url(__FILE__) . 'logo.png'); ?>" alt="Logo" style="max-width:100%;height:auto;margin-bottom:20px;">
             <h2 style="margin-bottom:20px;">ID-Caamth</h2>
             <?php if ($error) : ?>
                 <p style="color:red;"><?php echo esc_html($error); ?></p>
             <?php endif; ?>
-            <input type="text" name="ve_user" placeholder="Usuario" required style="width:100%;padding:10px;margin-bottom:10px;">
-            <input type="password" name="ve_pass" placeholder="Contraseña" required style="width:100%;padding:10px;margin-bottom:10px;">
-            <button type="submit" style="padding:10px 20px;">Iniciar sesión</button>
+            <input type="text" name="ve_user" placeholder="Usuario" required>
+            <input type="password" name="ve_pass" placeholder="Contraseña" required>
+            <button type="submit">Iniciar sesión</button>
         </form>
     </div>
+    <style>
+    .ve-login-wrapper{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:15px;}
+    .ve-login-form{max-width:300px;width:100%;text-align:center;background:#fff;border:1px solid #ccc;border-radius:10px;padding:20px;font-family:Arial, sans-serif;box-shadow:0 0 10px rgba(0,0,0,0.1);}
+    .ve-login-form input{width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;}
+    .ve-login-form button{background-color:#282878;color:#fff;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;transition:background-color 0.3s,transform 0.2s;}
+    .ve-login-form button:hover{background-color:#121227;transform:scale(1.05);}
+    @media (max-width:600px){.ve-login-form{max-width:90%;}}
+    </style>
     <?php
     return ob_get_clean();
 }
