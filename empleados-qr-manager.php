@@ -315,6 +315,10 @@ if ($empleados_lista !== null) {
 <!-- Búsqueda de empleados -->
 
     <input type="text" id="search-input" placeholder="Buscar por nombre o número de empleado" style="margin-top: 20px; padding: 8px; font-size: 16px; width: 325px;"><br>
+    <p style="margin-top:10px;">
+        <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_exportar_empleados') ); ?>">Exportar a Excel</a>
+        <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_layout_empleados') ); ?>">Layout de carga</a>
+    </p>
     <div id="search-results"></div>
 
     <style>
@@ -809,7 +813,7 @@ button[title="Editar empleado"]:hover {
     </form>
 </div>
 
-    <script> // Llenar el select de departamento y puesto cuando se crea un usuario 
+    <script> // Llenar el select de departamento y puesto cuando se crea un usuario
         document.addEventListener("DOMContentLoaded", function() {
             const catalogo = window.catalogo || {};
             const departamentoSelect = document.getElementById("departamento");
@@ -834,6 +838,34 @@ button[title="Editar empleado"]:hover {
                     puestoSelect.appendChild(opt);
                 });
             });
+        });
+    </script>
+
+    <script> // Llenar selects en el formulario de edición
+        document.addEventListener("DOMContentLoaded", function() {
+            const catalogo = window.catalogo || {};
+            const departamentoEdit = document.getElementById("edit_departamento");
+            const puestoEdit = document.getElementById("edit_puesto");
+
+            if (departamentoEdit && puestoEdit) {
+                Object.keys(catalogo).forEach(dep => {
+                    const option = document.createElement("option");
+                    option.value = dep;
+                    option.textContent = dep;
+                    departamentoEdit.appendChild(option);
+                });
+
+                departamentoEdit.addEventListener("change", function() {
+                    const puestos = catalogo[this.value] || [];
+                    puestoEdit.innerHTML = '<option value="">Editar puesto</option>';
+                    puestos.forEach(p => {
+                        const opt = document.createElement("option");
+                        opt.value = p;
+                        opt.textContent = p;
+                        puestoEdit.appendChild(opt);
+                    });
+                });
+            }
         });
     </script>
 
@@ -1137,6 +1169,42 @@ function ve_eliminar_empleado(){
     }
 
     wp_die();
+}
+
+// === Descargar listado completo en Excel ===
+add_action('wp_ajax_ve_exportar_empleados', 've_exportar_empleados');
+add_action('wp_ajax_nopriv_ve_exportar_empleados', 've_exportar_empleados');
+
+function ve_exportar_empleados(){
+    global $wpdb;
+    $tabla = $wpdb->prefix . 'empleados';
+    $empleados = $wpdb->get_results("SELECT id, numero, nombre, departamento, puesto, estatus, foto FROM $tabla ORDER BY numero", ARRAY_A);
+
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename="empleados.xlsx"');
+
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['ID','Número de empleado','Nombre','Departamento','Puesto','Estatus','Foto']);
+    foreach ($empleados as $emp){
+        fputcsv($output, $emp);
+    }
+    fclose($output);
+    exit;
+}
+
+// === Descargar layout vacío para carga masiva ===
+add_action('wp_ajax_ve_layout_empleados', 've_layout_empleados');
+add_action('wp_ajax_nopriv_ve_layout_empleados', 've_layout_empleados');
+
+function ve_layout_empleados(){
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename="layout_empleados.xlsx"');
+
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Número de empleado','Nombre','Departamento','Puesto','Estatus']);
+    fputcsv($output, ['001','Juan Pérez','Dirección General','Auxiliar de Atención Ciudadana','Activo']);
+    fclose($output);
+    exit;
 }
 
 
