@@ -123,9 +123,9 @@ function ve_verificar_empleado_shortcode() {
             content: "";
             position: absolute;
             inset: 0;
-            background-image: inherit;
-            background-size: contain;
-            background-position: center bottom;
+            background-image: url('<?php echo esc_url($fondo_url); ?>');
+            background-size: cover;
+            background-position: center;
             background-repeat: no-repeat;
             opacity: 0.6;
             z-index: 0;
@@ -139,7 +139,7 @@ function ve_verificar_empleado_shortcode() {
     </head>
     <div class="ve-container" style="max-width: 600px; width:100%; margin: 0 auto; text-align: center; font-family: sans-serif; font-size: 18px; padding:15px; box-sizing:border-box;">
     <h2 style="font-size: 26px;">Verificación de Empleado</h2>
-    <div class="ve-photo" style="background-image:url('<?php echo esc_url($fondo_url); ?>'); display:inline-block; padding:20px; border-radius:10px; margin-bottom:15px;">
+    <div class="ve-photo" style="display:inline-block; padding:20px; border-radius:10px; margin-bottom:15px;">
         <img id="ve-img" src="<?php echo esc_url($foto_url); ?>" style="max-width:180px; width:100%; height:auto; border-radius:10px;">
     </div>
     <p><strong required>Número de Empleado:</strong><br> <span id="ve-numero"><?php echo esc_html($empleado->numero); ?></span></p>
@@ -154,12 +154,12 @@ function ve_verificar_empleado_shortcode() {
     </p>
 
     <?php if (strtolower($empleado->estatus) === 'inactivo') : ?>
-        <div style='margin-top:20px;padding:15px;border-radius:10px;background-color:#FF0000;color:#fff;font-size:16px;'>
-            <p><strong>Advertencia:</strong> Este ciudadano ya no pertenece a la CAAMTH.</p>
+        <div style='margin-top:20px;padding:15px;border-radius:10px;background-color:#ff4d4d;border:1px solid #ff9999;color:#fff;font-size:16px;'>
+            <p><strong>Advertencia: Este ciudadano ya no pertenece a la CAAMTH.</strong></p>
         </div>
     <?php else : ?>
-        <div style='margin-top:20px;padding:15px;border-radius:10px;background-color:#88E788;color:#fff;font-size:16px;'>
-            <p>Este ciudadano pertenece a la CAAMTH.</p>
+        <div style='margin-top:20px;padding:15px;border-radius:10px;background-color:#008000;color:#fff;font-size:16px;'>
+            <p><strong>Este ciudadano pertenece a la CAAMTH.</strong></p>
         </div>
     <?php endif; ?>
 
@@ -1486,6 +1486,12 @@ function ve_login_shortcode(){
         </form>
     </div>
     <style>
+    body{
+        background-image:url('<?php echo esc_url(plugin_dir_url(__FILE__) . 'fondo_login.png'); ?>');
+        background-size:cover;
+        background-position:center;
+        background-repeat:no-repeat;
+    }
     .ve-login-wrapper{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:15px;}
     .ve-login-form{max-width:300px;width:100%;text-align:center;background:#fff;border:1px solid #ccc;border-radius:10px;padding:20px;font-family:Arial, sans-serif;box-shadow:0 0 10px rgba(0,0,0,0.1);}
     .ve-login-form input{width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;}
