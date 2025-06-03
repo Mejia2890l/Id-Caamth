@@ -802,7 +802,7 @@ button[title="Editar empleado"]:hover {
                     <button type="button" class="button-see" onClick="window.open('<?php echo $ver_url_empleado; ?>', '_blank')">Ver</button>
                     <button type="button" title="Editar empleado" onclick="openEditModal(<?php echo $json_empleado; ?>)">Editar</button>
                     <button type="button" class="button-delete" data-id="<?php echo $id_empleado; ?>">Eliminar</button>
-                    <button type="button" class="button-download" onClick="descargarQR('<?php echo $qr_url; ?>', 'qr_<?php echo $nombre_empleado?>_<?php echo $numero_empleado; ?>.png')">QR</button>
+                    <button type="button" class="button-download" onClick="openQRModal('<?php echo $qr_url; ?>', 'qr_<?php echo $nombre_empleado?>_<?php echo $numero_empleado; ?>.png')">QR</button>
                 </td>
             </tr>
 <?php } ?>
@@ -975,6 +975,28 @@ button[title="Editar empleado"]:hover {
             <button type="submit">Guardar cambios</button>
             <button type="button" onClick="closeEditModal()">Cancelar</button>
     </form>
+</div>
+
+<style>
+    #qrModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:15px;}
+    #qrModal .qr-content{background:#fff;border-radius:10px;padding:20px;text-align:center;max-width:400px;width:100%;}
+    #qrModal img{max-width:100%;height:auto;margin:15px 0;display:none;}
+    #qrModal button{margin:5px;padding:8px 15px;border:none;border-radius:6px;cursor:pointer;}
+    #qrModal button.visualize{background:#282878;color:#fff;}
+    #qrModal button.download{background:#007bff;color:#fff;}
+    #qrModal button.close{background:#E62645;color:#fff;}
+</style>
+
+<div id="qrModal">
+    <div class="qr-content">
+        <h3>Código QR del Empleado</h3>
+        <img id="qrImage" src="" alt="QR" />
+        <div>
+            <button type="button" class="visualize" id="qrViewBtn">Visualizar</button>
+            <button type="button" class="download" id="qrDownloadBtn">Descargar</button>
+            <button type="button" class="close" id="qrCloseBtn">Cerrar</button>
+        </div>
+    </div>
 </div>
 
     <script> // Llenar el select de departamento y puesto cuando se crea un usuario
@@ -1263,6 +1285,30 @@ button[title="Editar empleado"]:hover {
         }
     </script>
 
+    <script>
+        function openQRModal(url, filename){
+            const modal = document.getElementById('qrModal');
+            const img = document.getElementById('qrImage');
+            img.src = url;
+            img.style.display = 'none';
+            modal.dataset.filename = filename;
+            modal.style.display = 'flex';
+        }
+
+        document.getElementById('qrViewBtn').addEventListener('click', function(){
+            document.getElementById('qrImage').style.display = 'block';
+        });
+
+        document.getElementById('qrDownloadBtn').addEventListener('click', function(){
+            const img = document.getElementById('qrImage');
+            descargarQR(img.src, document.getElementById('qrModal').dataset.filename);
+        });
+
+        document.getElementById('qrCloseBtn').addEventListener('click', function(){
+            document.getElementById('qrModal').style.display = 'none';
+        });
+    </script>
+
     <?php
     return ob_get_clean();
 }
@@ -1304,7 +1350,7 @@ function ve_buscar_empleado() {
                     <button type="button" class="button-see" onClick="window.open(\''. esc_url(home_url("/verificar-empleado/". $empleado->id. "/")).'\', \'_blank\')">Ver</button>
                     <button type="button" title="Editar empleado" onclick=\'openEditModal(' . $json_empleado . ')\'>Editar</button>
                     <button type="button" class="button-delete" data-id="' . esc_attr($empleado->id) . '">Eliminar</button>
-                    <button type="button" class="button-download" onclick="descargarQR(\'' . esc_url($qr_url) . '\', \'' . esc_attr($qr_filename) . '\')">QR</button>
+                    <button type="button" class="button-download" onclick="openQRModal(\'' . esc_url($qr_url) . '\', \'' . esc_attr($qr_filename) . '\')">QR</button>
                   </td>';
             echo '</tr>';
         }
@@ -1471,8 +1517,8 @@ function ve_login_shortcode(){
     $error = '';
     if (isset($_POST['ve_user']) && isset($_POST['ve_pass'])) {
         $user = sanitize_text_field($_POST['ve_user']);
-        $pass = $_POST['ve_pass'];
-        if (isset(VE_LOGIN_CREDENTIALS[$user]) && $pass === VE_LOGIN_CREDENTIALS[$user]) {
+        $pass = wp_unslash($_POST['ve_pass']);
+        if (isset(VE_LOGIN_CREDENTIALS[$user]) && hash_equals(VE_LOGIN_CREDENTIALS[$user], $pass)) {
             $_SESSION['ve_logged_in'] = true;
             $redirect = !empty($_SESSION['ve_redirect']) ? $_SESSION['ve_redirect'] : home_url('/agregar-empleado/');
             unset($_SESSION['ve_redirect']);
