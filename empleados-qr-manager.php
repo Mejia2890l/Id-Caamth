@@ -613,8 +613,6 @@ button[title="Editar empleado"]:hover {
 
 <tbody>
 <!-- Contenido traído desde la base de datos -->
-<?php
-
 <?php foreach ($empleados_lista as $mostrar_empleados) { ?>
             <tr>
                 <td><?php echo esc_html($mostrar_empleados['numero']); ?></td>
