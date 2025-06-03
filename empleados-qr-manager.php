@@ -128,9 +128,9 @@ function formulario_agregar_empleado() {
     global $wpdb;
     $tabla = $wpdb->prefix . 'empleados';
 
-    // Cargar catalogo.js
-    wp_enqueue_script('catalogo-js', plugin_dir_url(__FILE__) . 'catalogo.js', [], null, true);
-
+    // Cargar catálogos
+    wp_enqueue_script('catalogo-departamentos-js', plugin_dir_url(__FILE__) . 'catalogo_departamentos.js', [], null, true);
+    wp_enqueue_script('catalogo-puestos-js', plugin_dir_url(__FILE__) . 'catalogo_puestos.js', [], null, true);
 
     ob_start();
 
@@ -268,6 +268,51 @@ if (isset($_POST['guardar_empleado']) && check_admin_referer('guardar_empleado_a
     }
 
     ?>
+<?php     if (isset($_POST['cargar_masivo']) && check_admin_referer('ve_carga_masiva_action','ve_carga_masiva_nonce')) {
+        if (!empty($_FILES['archivo_empleados']['tmp_name'])) {
+            $rows = ve_parse_simple_xlsx($_FILES['archivo_empleados']['tmp_name']);
+            if ($rows) {
+                $encabezados = ["Número de empleado","Nombre","Departamento","Puesto","Estatus"];
+                $valid = true;
+                foreach ($encabezados as $i => $enc) {
+                    if (strtolower($rows[0][$i] ?? '') !== strtolower($enc)) {
+                        $valid = false;
+                        break;
+                    }
+                }
+                if ($valid) {
+                    unset($rows[0]);
+                    foreach ($rows as $fila) {
+                        if (count($fila) < 5) continue;
+                        $numero = sanitize_text_field($fila[0]);
+                        $nombre = sanitize_text_field($fila[1]);
+                        $departamento = sanitize_text_field($fila[2]);
+                        $puesto = sanitize_text_field($fila[3]);
+                        $estatus = sanitize_text_field($fila[4]);
+                        if ($numero && $nombre && $departamento && $puesto && $estatus) {
+                            $wpdb->insert($tabla, [
+                                'numero' => $numero,
+                                'nombre' => $nombre,
+                                'departamento' => $departamento,
+                                'puesto' => $puesto,
+                                'estatus' => $estatus,
+                                'foto' => ''
+                            ]);
+                        }
+                    }
+                    echo "<p style='color:green;'>Carga masiva completada.</p>";
+                } else {
+                    echo "<p style='color:red;'>Encabezados del archivo inválidos.</p>";
+                }
+            } else {
+                echo "<p style='color:red;'>Archivo no válido.</p>";
+            }
+        } else {
+            echo "<p style='color:red;'>Seleccione un archivo .xlsx.</p>";
+        }
+    }
+?>
+
     <form method="post" enctype="multipart/form-data" style="max-width: 600px; margin: 0 auto; font-size: 18px;">
     <?php wp_nonce_field("guardar_empleado_action","guardar_empleado_nonce"); ?>
         <input type="text" name="numero_empleado" placeholder="Número de empleado" required><br><br>
@@ -319,6 +364,11 @@ if ($empleados_lista !== null) {
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_exportar_empleados') ); ?>">Exportar a Excel</a>
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_layout_empleados') ); ?>">Layout de carga</a>
     </p>
+    <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
+        <?php wp_nonce_field("ve_carga_masiva_action","ve_carga_masiva_nonce"); ?>
+        <input type="file" name="archivo_empleados" accept=".xlsx" required>
+        <button type="submit" name="cargar_masivo" class="button-download">Subir empleados</button>
+    </form>
     <div id="search-results"></div>
 
     <style>
@@ -815,19 +865,18 @@ button[title="Editar empleado"]:hover {
 
     <script> // Llenar el select de departamento y puesto cuando se crea un usuario
         document.addEventListener("DOMContentLoaded", function() {
-            const catalogo = window.catalogo || {};
+            const catalogo = window.catalogoPuestos || {};
+            const departamentos = window.catalogoDepartamentos || [];
             const departamentoSelect = document.getElementById("departamento");
             const puestoSelect = document.getElementById("puesto");
 
-            // Rellenar departamentos
-            Object.keys(catalogo).forEach(dep => {
+            departamentos.forEach(dep => {
                 const option = document.createElement("option");
                 option.value = dep;
                 option.textContent = dep;
                 departamentoSelect.appendChild(option);
             });
 
-            // Cuando cambia el departamento
             departamentoSelect.addEventListener("change", function() {
                 const puestos = catalogo[this.value] || [];
                 puestoSelect.innerHTML = '<option value="">Seleccione un puesto</option>';
@@ -843,12 +892,13 @@ button[title="Editar empleado"]:hover {
 
     <script> // Llenar selects en el formulario de edición
         document.addEventListener("DOMContentLoaded", function() {
-            const catalogo = window.catalogo || {};
+            const catalogo = window.catalogoPuestos || {};
+            const departamentos = window.catalogoDepartamentos || [];
             const departamentoEdit = document.getElementById("edit_departamento");
             const puestoEdit = document.getElementById("edit_puesto");
 
             if (departamentoEdit && puestoEdit) {
-                Object.keys(catalogo).forEach(dep => {
+                departamentos.forEach(dep => {
                     const option = document.createElement("option");
                     option.value = dep;
                     option.textContent = dep;
@@ -1170,6 +1220,82 @@ function ve_eliminar_empleado(){
 
     wp_die();
 }
+function ve_xlsx_col($index){
+    $index++;
+    $col="";
+    while($index>0){
+        $index--;
+        $col = chr(65 + ($index % 26)) . $col;
+        $index = floor($index/26);
+    }
+    return $col;
+}
+
+function ve_generate_xlsx($rows){
+    $tmp = tempnam(sys_get_temp_dir(), 'xlsx');
+    $zip = new ZipArchive();
+    $zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>');
+    $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>');
+    $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>');
+    $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>');
+    $sheet = "<worksheet xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'><sheetData>";
+    foreach($rows as $r=> $row){
+        $sheet .= "<row r='".($r+1)."'>";
+        foreach($row as $c=> $v){
+            $cell = ve_xlsx_col($c).($r+1);
+            $val = htmlspecialchars($v, ENT_XML1);
+            $sheet .= "<c r='$cell' t='inlineStr'><is><t>$val</t></is></c>";
+        }
+        $sheet .= '</row>';
+    }
+    $sheet .= '</sheetData></worksheet>';
+    $zip->addFromString('xl/worksheets/sheet1.xml', $sheet);
+    $zip->close();
+    $data = file_get_contents($tmp);
+    @unlink($tmp);
+    return $data;
+}
+
+function ve_parse_simple_xlsx($file){
+    $zip = new ZipArchive();
+    if($zip->open($file) === TRUE){
+        $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        if($xml){
+            $sxe = simplexml_load_string($xml);
+            $rows = [];
+            foreach($sxe->sheetData->row as $row){
+                $r = [];
+                foreach($row->c as $c){
+                    if(isset($c->is->t)){
+                        $r[] = (string)$c->is->t;
+                    }elseif(isset($c->v)){
+                        $r[] = (string)$c->v;
+                    }else{
+                        $r[] = '';
+                    }
+                }
+                $rows[] = $r;
+            }
+            return $rows;
+        }
+    }
+    return false;
+}
 
 // === Descargar listado completo en Excel ===
 add_action('wp_ajax_ve_exportar_empleados', 've_exportar_empleados');
@@ -1179,34 +1305,34 @@ function ve_exportar_empleados(){
     global $wpdb;
     $tabla = $wpdb->prefix . 'empleados';
     $empleados = $wpdb->get_results("SELECT id, numero, nombre, departamento, puesto, estatus, foto FROM $tabla ORDER BY numero", ARRAY_A);
-
-    header('Content-Type: application/vnd.ms-excel');
-    header('Content-Disposition: attachment; filename="empleados.xlsx"');
-
-    $output = fopen('php://output', 'w');
-    fputcsv($output, ['ID','Número de empleado','Nombre','Departamento','Puesto','Estatus','Foto']);
+    $rows = [];
+    $rows[] = ['ID','Número de empleado','Nombre','Departamento','Puesto','Estatus','Foto'];
     foreach ($empleados as $emp){
-        fputcsv($output, $emp);
+        $rows[] = array_values($emp);
     }
-    fclose($output);
+    $xlsx = ve_generate_xlsx($rows);
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="empleados.xlsx"');
+    echo $xlsx;
     exit;
 }
+
 
 // === Descargar layout vacío para carga masiva ===
 add_action('wp_ajax_ve_layout_empleados', 've_layout_empleados');
 add_action('wp_ajax_nopriv_ve_layout_empleados', 've_layout_empleados');
 
 function ve_layout_empleados(){
-    header('Content-Type: application/vnd.ms-excel');
+    $rows = [
+        ['Número de empleado','Nombre','Departamento','Puesto','Estatus'],
+        ['001','Juan Pérez','Dirección General','Auxiliar de Atención Ciudadana','Activo']
+    ];
+    $xlsx = ve_generate_xlsx($rows);
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment; filename="layout_empleados.xlsx"');
-
-    $output = fopen('php://output', 'w');
-    fputcsv($output, ['Número de empleado','Nombre','Departamento','Puesto','Estatus']);
-    fputcsv($output, ['001','Juan Pérez','Dirección General','Auxiliar de Atención Ciudadana','Activo']);
-    fclose($output);
+    echo $xlsx;
     exit;
 }
-
 
 
 

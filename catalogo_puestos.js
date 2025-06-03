@@ -1,4 +1,4 @@
-window.catalogo = {
+window.catalogoPuestos = {
       "Dirección General": ["Auxiliar de Atención Ciudadana",
   "Auxiliar de Concertación Ciudadana",
   "Coordinador de Atención Ciudadana",
@@ -184,14 +184,14 @@ function iniciarCatalogo(departamentoId, puestoId) {
     if (!departamentoSelect || !puestoSelect) {
         return;
     }
-    Object.keys(window.catalogo).forEach(dep => {
+    Object.keys(window.catalogoPuestos).forEach(dep => {
         const option = document.createElement('option');
         option.value = dep;
         option.textContent = dep;
         departamentoSelect.appendChild(option);
     });
     departamentoSelect.addEventListener('change', () => {
-        const puestos = window.catalogo[departamentoSelect.value] || [];
+        const puestos = window.catalogoPuestos[departamentoSelect.value] || [];
         puestoSelect.innerHTML = '<option value="">Seleccione un puesto</option>';
         puestos.forEach(puesto => {
             const opt = document.createElement('option');
