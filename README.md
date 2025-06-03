@@ -26,6 +26,12 @@ Credenciales predeterminadas:
 - **Usuario:** `RH`
 - **Contraseña:** `&>1yBj|h5M7\`
 
+- **Usuario:** `Diseño`
+- **Contraseña:** `ANdymAorCe`
+
+- **Usuario:** `Sistemas`
+- **Contraseña:** `loSeNUsHOl`
+
 ## Requerimientos
 - WordPress 5.0 o superior.
 - PHP 7.0 o superior.
