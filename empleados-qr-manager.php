@@ -6,9 +6,32 @@
  * Author: Luis Fernando Lizardi Mejía | Manuel Saldivar Martínez
  */
 
+// === SESIÓN Y CONSTANTES DE LOGIN ===
+function ve_start_session() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+}
+add_action('init', 've_start_session', 1);
+
+define('VE_LOGIN_USER', 'RH');
+define('VE_LOGIN_PASS', '&>1yBj|h5M7\\');
+define('VE_LOGIN_SLUG', 've-login');
+
+function ve_login_template_redirect() {
+    global $wp_query;
+    if (isset($wp_query->query_vars['pagename']) && $wp_query->query_vars['pagename'] === VE_LOGIN_SLUG) {
+        echo do_shortcode('[ve_login]');
+        exit;
+    }
+}
+add_action('template_redirect', 've_login_template_redirect');
+
+
 // === REGLA DE REESCRITURA ===
 function ve_agregar_rewrite_rule() {
     add_rewrite_rule('^verificar-empleado/([0-9]+)/?$', 'index.php?pagename=verificar-empleado&empleado_id=$matches[1]', 'top');
+    add_rewrite_rule('^' . VE_LOGIN_SLUG . '/?$', 'index.php?pagename=' . VE_LOGIN_SLUG, 'top');
 }
 add_action('init', 've_agregar_rewrite_rule');
 
@@ -53,6 +76,10 @@ function ve_verificar_empleado_shortcode() {
     $empleado_id = get_query_var('empleado_id');
 
     ob_start();
+
+    
+
+
 
     if (!$empleado_id) {
         echo '<p style="text-align: center;">Escanee un código QR válido para ver la información del empleado.</p>';
@@ -123,8 +150,12 @@ function ve_verificar_empleado_shortcode() {
     </p>
 
     <?php if (strtolower($empleado->estatus) === 'inactivo') : ?>
-        <div style='margin-top: 20px; padding: 15px; border: 1px solid #dc3545; border-radius: 10px; background-color: #f8d7da; color: #721c24; font-size: 16px;'>
+        <div style='margin-top:20px;padding:15px;border-radius:10px;background-color:#FF0000;color:#fff;font-size:16px;'>
             <p><strong>Advertencia:</strong> Este ciudadano ya no pertenece a la CAAMTH.</p>
+        </div>
+    <?php else : ?>
+        <div style='margin-top:20px;padding:15px;border-radius:10px;background-color:#88E788;color:#fff;font-size:16px;'>
+            <p>Este ciudadano pertenece a la CAAMTH.</p>
         </div>
     <?php endif; ?>
 
@@ -179,6 +210,11 @@ add_shortcode('verificar_empleado', 've_verificar_empleado_shortcode');
 
 // === SHORTCODE: FORMULARIO PARA AGREGAR EMPLEADO ===
 function formulario_agregar_empleado() {
+    if (empty($_SESSION['ve_logged_in'])) {
+        $_SESSION['ve_redirect'] = $_SERVER['REQUEST_URI'];
+        wp_redirect(home_url('/' . VE_LOGIN_SLUG . '/'));
+        exit;
+    }
     global $wpdb;
     $tabla = $wpdb->prefix . 'empleados';
 
@@ -187,6 +223,14 @@ function formulario_agregar_empleado() {
     wp_enqueue_script('catalogo-puestos-js', plugin_dir_url(__FILE__) . 'catalogo_puestos.js', [], null, true);
 
     ob_start();
+
+    if (isset($_GET['ve_logout'])) {
+        unset($_SESSION['ve_logged_in']);
+        wp_redirect(home_url('/' . VE_LOGIN_SLUG . '/'));
+        exit;
+    }
+
+    echo '<p style="text-align:right;"><a href="?ve_logout=1">Cerrar sesión</a></p>';
 
 if (isset($_POST['guardar_empleado']) && check_admin_referer('guardar_empleado_action','guardar_empleado_nonce')) {
 
@@ -1405,6 +1449,42 @@ function ve_layout_empleados(){
     echo $xlsx;
     exit;
 }
+
+// === SHORTCODE DE LOGIN PERSONALIZADO ===
+function ve_login_shortcode(){
+    $error = '';
+    if (isset($_POST['ve_user']) && isset($_POST['ve_pass'])) {
+        $user = sanitize_text_field($_POST['ve_user']);
+        $pass = $_POST['ve_pass'];
+        if ($user === VE_LOGIN_USER && $pass === VE_LOGIN_PASS) {
+            $_SESSION['ve_logged_in'] = true;
+            $redirect = !empty($_SESSION['ve_redirect']) ? $_SESSION['ve_redirect'] : home_url('/');
+            unset($_SESSION['ve_redirect']);
+            wp_redirect($redirect);
+            exit;
+        } else {
+            $error = 'Credenciales incorrectas';
+        }
+    }
+
+    ob_start();
+    ?>
+    <div style="display:flex;justify-content:center;align-items:center;min-height:100vh;">
+        <form method="post" style="text-align:center;max-width:300px;width:100%;padding:20px;">
+            <img src="<?php echo esc_url(plugin_dir_url(__FILE__) . 'logo.png'); ?>" alt="Logo" style="max-width:100%;height:auto;margin-bottom:20px;">
+            <h2 style="margin-bottom:20px;">ID-Caamth</h2>
+            <?php if ($error) : ?>
+                <p style="color:red;"><?php echo esc_html($error); ?></p>
+            <?php endif; ?>
+            <input type="text" name="ve_user" placeholder="Usuario" required style="width:100%;padding:10px;margin-bottom:10px;">
+            <input type="password" name="ve_pass" placeholder="Contraseña" required style="width:100%;padding:10px;margin-bottom:10px;">
+            <button type="submit" style="padding:10px 20px;">Iniciar sesión</button>
+        </form>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('ve_login', 've_login_shortcode');
 
 
 
