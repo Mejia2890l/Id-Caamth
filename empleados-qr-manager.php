@@ -83,21 +83,42 @@ function ve_verificar_empleado_shortcode() {
             .ve-container{font-size:16px;}
             .ve-photo img{max-width:100%;}
         }
+
+        .ve-photo{
+            position: relative;
+        }
+
+        .ve-photo::before{
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: inherit;
+            background-size: contain;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            opacity: 0.6;
+            z-index: 0;
+        }
+
+        .ve-photo img{
+            position: relative;
+            z-index: 1;
+        }
     </style>
     </head>
     <div class="ve-container" style="max-width: 600px; width:100%; margin: 0 auto; text-align: center; font-family: sans-serif; font-size: 18px; padding:15px; box-sizing:border-box;">
     <h2 style="font-size: 26px;">Verificación de Empleado</h2>
-    <div class="ve-photo" style="background:url('<?php echo esc_url($fondo_url); ?>') center/contain no-repeat; display:inline-block; padding:20px; border-radius:10px; margin-bottom:15px;">
-        <img src="<?php echo esc_url($foto_url); ?>" style="max-width:180px; width:100%; height:auto; border-radius:10px; position:relative; z-index:1;">
+    <div class="ve-photo" style="background-image:url('<?php echo esc_url($fondo_url); ?>'); display:inline-block; padding:20px; border-radius:10px; margin-bottom:15px;">
+        <img id="ve-img" src="<?php echo esc_url($foto_url); ?>" style="max-width:180px; width:100%; height:auto; border-radius:10px;">
     </div>
-    <p><strong required>Número de Empleado:</strong><br> <?php echo esc_html($empleado->numero); ?></p>
-    <p><strong required>Nombre:</strong><br> <?php echo esc_html($empleado->nombre); ?></p>
-    <p><strong required>Departamento:</strong><br> <?php echo esc_html($empleado->departamento); ?></p>
-    <p><strong required>Puesto:</strong><br> <?php echo esc_html($empleado->puesto); ?></p>
+    <p><strong required>Número de Empleado:</strong><br> <span id="ve-numero"><?php echo esc_html($empleado->numero); ?></span></p>
+    <p><strong required>Nombre:</strong><br> <span id="ve-nombre"><?php echo esc_html($empleado->nombre); ?></span></p>
+    <p><strong required>Departamento:</strong><br> <span id="ve-departamento"><?php echo esc_html($empleado->departamento); ?></span></p>
+    <p><strong required>Puesto:</strong><br> <span id="ve-puesto"><?php echo esc_html($empleado->puesto); ?></span></p>
     <p><strong required>Estado:</strong><br>
         <?php
         $color = strtolower($empleado->estatus) === 'activo' ? 'green' : 'red';
-        echo "<span style='color:$color; font-weight:bold;'>" . esc_html($empleado->estatus) . "</span>";
+        echo "<span id='ve-estatus' style='color:$color; font-weight:bold;'>" . esc_html($empleado->estatus) . "</span>";
         ?>
     </p>
 
@@ -116,6 +137,39 @@ function ve_verificar_empleado_shortcode() {
         </p>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const empId = <?php echo intval($empleado->id); ?>;
+    const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+
+    function refreshData(){
+        fetch(ajaxUrl + '?action=ve_get_empleado&id=' + empId)
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.id){
+                    document.getElementById('ve-numero').textContent = data.numero;
+                    document.getElementById('ve-nombre').textContent = data.nombre;
+                    document.getElementById('ve-departamento').textContent = data.departamento;
+                    document.getElementById('ve-puesto').textContent = data.puesto;
+                    const statusEl = document.getElementById('ve-estatus');
+                    statusEl.textContent = data.estatus;
+                    const color = data.estatus.toLowerCase() === 'activo' ? 'green' : 'red';
+                    statusEl.style.color = color;
+                    let foto = data.foto;
+                    if(data.estatus.toLowerCase() === 'inactivo'){
+                        foto = '<?php echo $plugin_url; ?>inactivo.png';
+                    }else if(!foto){
+                        foto = '<?php echo $plugin_url; ?>activo.png';
+                    }
+                    document.getElementById('ve-img').src = foto;
+                }
+            });
+    }
+
+    setInterval(refreshData, 5000);
+});
+</script>
 
     <?php
 
@@ -1219,6 +1273,24 @@ function ve_eliminar_empleado(){
     }
 
     wp_die();
+}
+
+// === Obtener datos de empleado vía AJAX ===
+add_action('wp_ajax_ve_get_empleado', 've_get_empleado');
+add_action('wp_ajax_nopriv_ve_get_empleado', 've_get_empleado');
+
+function ve_get_empleado(){
+    global $wpdb;
+    $tabla = $wpdb->prefix . 'empleados';
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    if ($id > 0) {
+        $empleado = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tabla WHERE id = %d", $id));
+        if ($empleado) {
+            wp_send_json($empleado);
+        }
+    }
+    wp_send_json_error('Empleado no encontrado');
 }
 function ve_xlsx_col($index){
     $index++;
