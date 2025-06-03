@@ -205,4 +205,4 @@ function iniciarCatalogo(departamentoId, puestoId) {
 document.addEventListener('DOMContentLoaded', () => {
     iniciarCatalogo('departamento', 'puesto');
     iniciarCatalogo('edit_departamento', 'edit_puesto');
-
+});
