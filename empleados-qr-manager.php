@@ -124,8 +124,8 @@ function ve_verificar_empleado_shortcode() {
             position: absolute;
             inset: 0;
             background-image: url('<?php echo esc_url($fondo_url); ?>');
-            background-size: cover;
-            background-position: center;
+            background-size: 100% 100%;
+            background-position: center bottom;
             background-repeat: no-repeat;
             opacity: 0.6;
             z-index: 0;
@@ -154,11 +154,11 @@ function ve_verificar_empleado_shortcode() {
     </p>
 
     <?php if (strtolower($empleado->estatus) === 'inactivo') : ?>
-        <div style='margin-top:20px;padding:15px;border-radius:10px;background-color:#ff4d4d;border:1px solid #ff9999;color:#fff;font-size:16px;'>
+        <div id="ve-status-box" style='margin-top:20px;padding:15px;border-radius:10px;background-color:#ff4d4d;border:1px solid #ff9999;color:#fff;font-size:16px;'>
             <p><strong>Advertencia: Este ciudadano ya no pertenece a la CAAMTH.</strong></p>
         </div>
     <?php else : ?>
-        <div style='margin-top:20px;padding:15px;border-radius:10px;background-color:#008000;color:#fff;font-size:16px;'>
+        <div id="ve-status-box" style='margin-top:20px;padding:15px;border-radius:10px;background-color:#008000;color:#fff;font-size:16px;'>
             <p><strong>Este ciudadano pertenece a la CAAMTH.</strong></p>
         </div>
     <?php endif; ?>
@@ -191,6 +191,18 @@ document.addEventListener('DOMContentLoaded', function(){
                     statusEl.textContent = data.estatus;
                     const color = data.estatus.toLowerCase() === 'activo' ? 'green' : 'red';
                     statusEl.style.color = color;
+                    const box = document.getElementById('ve-status-box');
+                    if (data.estatus.toLowerCase() === 'inactivo') {
+                        box.style.backgroundColor = '#ff4d4d';
+                        box.style.border = '1px solid #ff9999';
+                        box.style.color = '#fff';
+                        box.innerHTML = '<p><strong>Advertencia: Este ciudadano ya no pertenece a la CAAMTH.</strong></p>';
+                    } else {
+                        box.style.backgroundColor = '#008000';
+                        box.style.border = 'none';
+                        box.style.color = '#fff';
+                        box.innerHTML = '<p><strong>Este ciudadano pertenece a la CAAMTH.</strong></p>';
+                    }
                     let foto = data.foto;
                     if(data.estatus.toLowerCase() === 'inactivo'){
                         foto = '<?php echo $plugin_url; ?>inactivo.png';
@@ -1462,7 +1474,7 @@ function ve_login_shortcode(){
         $pass = $_POST['ve_pass'];
         if (isset(VE_LOGIN_CREDENTIALS[$user]) && $pass === VE_LOGIN_CREDENTIALS[$user]) {
             $_SESSION['ve_logged_in'] = true;
-            $redirect = !empty($_SESSION['ve_redirect']) ? $_SESSION['ve_redirect'] : home_url('/');
+            $redirect = !empty($_SESSION['ve_redirect']) ? $_SESSION['ve_redirect'] : home_url('/agregar-empleado/');
             unset($_SESSION['ve_redirect']);
             wp_redirect($redirect);
             exit;
