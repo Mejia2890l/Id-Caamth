@@ -87,8 +87,8 @@ function ve_verificar_empleado_shortcode() {
     </head>
     <div class="ve-container" style="max-width: 600px; width:100%; margin: 0 auto; text-align: center; font-family: sans-serif; font-size: 18px; padding:15px; box-sizing:border-box;">
     <h2 style="font-size: 26px;">Verificación de Empleado</h2>
-    <div class="ve-photo" style="background:url('<?php echo esc_url($fondo_url); ?>') center/contain no-repeat; display:inline-block; padding:10px; border-radius:10px; margin-bottom:15px;">
-        <img src="<?php echo esc_url($foto_url); ?>" style="max-width:180px; width:100%; height:auto; border-radius:10px;">
+    <div class="ve-photo" style="background:url('<?php echo esc_url($fondo_url); ?>') center/cover no-repeat; display:inline-block; padding:20px; border-radius:10px; margin-bottom:15px;">
+        <img src="<?php echo esc_url($foto_url); ?>" style="max-width:180px; width:100%; height:auto; border-radius:10px; position:relative; z-index:1;">
     </div>
     <p><strong required>Número de Empleado:</strong><br> <?php echo esc_html($empleado->numero); ?></p>
     <p><strong required>Nombre:</strong><br> <?php echo esc_html($empleado->nombre); ?></p>
