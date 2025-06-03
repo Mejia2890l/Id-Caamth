@@ -11,10 +11,20 @@ Al activarse se crea la tabla `wp_empleados` donde se almacenan los datos.
 ## Uso
 - Utiliza el shortcode `[agregar_empleado]` para mostrar el formulario de alta y edición.
 - Utiliza el shortcode `[verificar_empleado]` para mostrar la información del empleado a partir de su ID.
+- Usa el shortcode `[ve_login]` para colocar la pantalla de acceso del sistema.
 
 Los códigos QR apuntan a la ruta `/verificar-empleado/{id}/` en tu sitio.
 
 Para un funcionamiento completo, añade las imágenes `activo.png`, `inactivo.png` y `fondo.png` en la carpeta del plugin.
+
+## Acceso al sistema
+
+El panel de gestión de empleados requiere autenticación propia. Crea la ruta `/ve-login/` en tu sitio y coloca en ella el shortcode `[ve_login]`.
+
+Credenciales predeterminadas:
+
+- **Usuario:** `RH`
+- **Contraseña:** `&>1yBj|h5M7\`
 
 ## Requerimientos
 - WordPress 5.0 o superior.
