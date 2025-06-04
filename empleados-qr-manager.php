@@ -233,7 +233,7 @@ add_shortcode('ve_login', function () {
     $args = array(
         'echo'           => false,
         'redirect'       => home_url('/agregar-empleado'),
-        'form_id'        => 'loginform',
+        'form_id'        => 've-login-form',
         'label_username' => __('Usuario'),
         'label_password' => __('Contraseña'),
         'label_remember' => __('Recordarme'),
@@ -243,18 +243,39 @@ add_shortcode('ve_login', function () {
 
     $form = wp_login_form($args);
 
+    // Añadir clases personalizadas al formulario y sus campos
+    $form = str_replace(
+        '<form name="loginform"',
+        '<form name="loginform" class="login-form"',
+        $form
+    );
+    $form = str_replace(
+        'id="user_login"',
+        'id="user_login" class="login-input"',
+        $form
+    );
+    $form = str_replace(
+        'id="user_pass"',
+        'id="user_pass" class="login-input"',
+        $form
+    );
+    $form = str_replace(
+        'id="wp-submit"',
+        'id="wp-submit" class="login-submit"',
+        $form
+    );
+
     ob_start();
     ?>
-    <div class="ve-login-wrapper">
-        <div class="ve-login-container">
-            <img src="<?php echo esc_url($logo_url); ?>" alt="Logo" class="ve-login-logo">
-            <p class="ve-login-text"><strong>ID-Caamth</strong></p>
-            <?php echo $form; ?>
-        </div>
+    <div class="login-wrapper">
+        <img src="<?php echo esc_url($logo_url); ?>" alt="Logo" class="login-logo" />
+        <h2 class="login-title"><strong>ID-Caamth</strong></h2>
+        <?php echo $form; ?>
     </div>
     <style>
-        .ve-login-wrapper {
+        .login-wrapper {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
@@ -262,7 +283,19 @@ add_shortcode('ve_login', function () {
             box-sizing: border-box;
             background: #f0f0f0;
         }
-        .ve-login-container {
+        .login-logo {
+            max-width: 180px;
+            width: 100%;
+            height: auto;
+            margin: 0 auto 10px;
+            display: block;
+        }
+        .login-title {
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+        .login-form {
             background: rgba(255, 255, 255, 0.9);
             padding: 30px;
             border-radius: 10px;
@@ -271,25 +304,13 @@ add_shortcode('ve_login', function () {
             width: 100%;
             text-align: center;
         }
-        .ve-login-logo {
-            max-width: 180px;
-            width: 100%;
-            height: auto;
-            margin: 0 auto 10px;
-            display: block;
-        }
-        .ve-login-text {
-            margin-bottom: 20px;
-            font-size: 18px;
-        }
-        .ve-login-container label {
+        .login-form label {
             display: block;
             text-align: left;
             margin-bottom: 5px;
             font-weight: bold;
         }
-        .ve-login-container input[type="text"],
-        .ve-login-container input[type="password"] {
+        .login-input {
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
@@ -298,12 +319,11 @@ add_shortcode('ve_login', function () {
             box-sizing: border-box;
             transition: border-color .3s;
         }
-        .ve-login-container input[type="text"]:focus,
-        .ve-login-container input[type="password"]:focus {
+        .login-input:focus {
             border-color: #282878;
             outline: none;
         }
-        .ve-login-container input[type="submit"] {
+        .login-submit {
             width: 100%;
             background: #282878;
             color: #fff;
@@ -313,15 +333,15 @@ add_shortcode('ve_login', function () {
             cursor: pointer;
             transition: background .3s;
         }
-        .ve-login-container input[type="submit"]:hover {
+        .login-submit:hover {
             background: #121227;
         }
-        .ve-login-container .forgetmenot {
+        .login-form .forgetmenot {
             margin-bottom: 15px;
             text-align: left;
         }
         @media (max-width: 600px) {
-            .ve-login-container {
+            .login-form {
                 padding: 20px;
             }
         }
