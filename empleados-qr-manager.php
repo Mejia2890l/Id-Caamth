@@ -1,11 +1,4 @@
 <?php
-session_start();
-
-add_action('init', function () {
-    if (!session_id()) {
-        session_start();
-    }
-});
 /**
  * Plugin Name: Verificador de Empleados
  * Description: Plugin para verificar empleados por ID a través de una URL con código QR. Usa URLs como /verificar-empleado/123.
@@ -21,6 +14,24 @@ define('VE_LOGIN_CREDENTIALS', [
     'Sistemas' => 'loSeNUsHOl'
 ]);
 define('VE_LOGIN_SLUG', 've-login');
+
+add_action('init', function () {
+    if (isset($_POST['custom_user']) && isset($_POST['custom_pass'])) {
+        $creds = array(
+            'user_login'    => sanitize_user($_POST['custom_user']),
+            'user_password' => $_POST['custom_pass'],
+            'remember'      => true,
+        );
+        $user = wp_signon($creds, false);
+        if (is_wp_error($user)) {
+            echo '<script>alert("Credenciales incorrectas.");</script>';
+        } else {
+            $redirect = !empty($_POST['redirect_to']) ? esc_url_raw($_POST['redirect_to']) : home_url('/agregar-empleado');
+            wp_redirect($redirect);
+            exit;
+        }
+    }
+});
 
 function ve_login_template_redirect() {
     global $wp_query;
@@ -65,6 +76,17 @@ function ve_activar_plugin() {
     ) $charset;";
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
+
+    // Crear usuarios predeterminados si no existen
+    foreach (VE_LOGIN_CREDENTIALS as $user => $pass) {
+        if (!username_exists($user)) {
+            wp_insert_user([
+                'user_login' => $user,
+                'user_pass'  => $pass,
+                'role'       => 'subscriber',
+            ]);
+        }
+    }
 }
 register_activation_hook(__FILE__, 've_activar_plugin');
 
@@ -226,9 +248,9 @@ add_shortcode('verificar_empleado', 've_verificar_empleado_shortcode');
 
 // === SHORTCODE: FORMULARIO PARA AGREGAR EMPLEADO ===
 function formulario_agregar_empleado() {
-    if (empty($_SESSION['ve_logged_in'])) {
-        $_SESSION['ve_redirect'] = $_SERVER['REQUEST_URI'];
-        wp_redirect(home_url('/' . VE_LOGIN_SLUG . '/'));
+    if (!is_user_logged_in()) {
+        $redirect = home_url($_SERVER['REQUEST_URI']);
+        wp_redirect(add_query_arg('redirect_to', urlencode($redirect), home_url('/' . VE_LOGIN_SLUG . '/')));
         exit;
     }
     global $wpdb;
@@ -241,7 +263,7 @@ function formulario_agregar_empleado() {
     ob_start();
 
     if (isset($_GET['ve_logout'])) {
-        unset($_SESSION['ve_logged_in']);
+        wp_logout();
         wp_redirect(home_url('/' . VE_LOGIN_SLUG . '/'));
         exit;
     }
@@ -1514,49 +1536,17 @@ function ve_layout_empleados(){
 
 // === SHORTCODE DE LOGIN PERSONALIZADO ===
 function ve_login_shortcode(){
-    $error = '';
-    if (isset($_POST['ve_user']) && isset($_POST['ve_pass'])) {
-        $user = sanitize_text_field($_POST['ve_user']);
-        $pass = wp_unslash($_POST['ve_pass']);
-        if (isset(VE_LOGIN_CREDENTIALS[$user]) && hash_equals(VE_LOGIN_CREDENTIALS[$user], $pass)) {
-            $_SESSION['ve_logged_in'] = true;
-            $redirect = !empty($_SESSION['ve_redirect']) ? $_SESSION['ve_redirect'] : home_url('/agregar-empleado/');
-            unset($_SESSION['ve_redirect']);
-            wp_redirect($redirect);
-            exit;
-        } else {
-            $error = 'Credenciales incorrectas';
-        }
-    }
-
+    $redirect = isset($_GET['redirect_to']) ? esc_url($_GET['redirect_to']) : '';
     ob_start();
     ?>
-    <div class="ve-login-wrapper">
-        <form class="ve-login-form" method="post">
-            <img src="<?php echo esc_url(plugin_dir_url(__FILE__) . 'logo.png'); ?>" alt="Logo" style="max-width:100%;height:auto;margin-bottom:20px;">
-            <h2 style="margin-bottom:20px;">ID-Caamth</h2>
-            <?php if ($error) : ?>
-                <p style="color:red;"><?php echo esc_html($error); ?></p>
-            <?php endif; ?>
-            <input type="text" name="ve_user" placeholder="Usuario" required>
-            <input type="password" name="ve_pass" placeholder="Contraseña" required>
-            <button type="submit">Iniciar sesión</button>
-        </form>
-    </div>
-    <style>
-    body{
-        background-image:url('<?php echo esc_url(plugin_dir_url(__FILE__) . 'fondo_login.png'); ?>');
-        background-size:cover;
-        background-position:center;
-        background-repeat:no-repeat;
-    }
-    .ve-login-wrapper{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:15px;}
-    .ve-login-form{max-width:300px;width:100%;text-align:center;background:#fff;border:1px solid #ccc;border-radius:10px;padding:20px;font-family:Arial, sans-serif;box-shadow:0 0 10px rgba(0,0,0,0.1);}
-    .ve-login-form input{width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;}
-    .ve-login-form button{background-color:#282878;color:#fff;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;transition:background-color 0.3s,transform 0.2s;}
-    .ve-login-form button:hover{background-color:#121227;transform:scale(1.05);}
-    @media (max-width:600px){.ve-login-form{max-width:90%;}}
-    </style>
+    <form method="post" style="max-width:400px;margin:auto;text-align:center">
+        <img src="<?php echo esc_url(plugin_dir_url(__FILE__) . 'logo.png'); ?>" alt="Logo" style="width:150px;margin-bottom:10px">
+        <h2 style="margin-bottom:20px;">ID-Caamth</h2>
+        <input type="hidden" name="redirect_to" value="<?php echo esc_attr($redirect); ?>">
+        <input type="text" name="custom_user" placeholder="Usuario" required style="display:block;width:100%;margin-bottom:10px;padding:8px">
+        <input type="password" name="custom_pass" placeholder="Contraseña" required style="display:block;width:100%;margin-bottom:20px;padding:8px">
+        <button type="submit" style="padding:10px 20px;">Iniciar sesión</button>
+    </form>
     <?php
     return ob_get_clean();
 }
