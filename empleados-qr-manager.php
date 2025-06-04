@@ -15,23 +15,28 @@ define('VE_LOGIN_CREDENTIALS', [
 ]);
 define('VE_LOGIN_SLUG', 've-login');
 
-add_action('init', function () {
-    if (isset($_POST['custom_user']) && isset($_POST['custom_pass'])) {
-        $creds = array(
-            'user_login'    => sanitize_user($_POST['custom_user']),
-            'user_password' => $_POST['custom_pass'],
-            'remember'      => true,
-        );
-        $user = wp_signon($creds, false);
-        if (is_wp_error($user)) {
-            echo '<script>alert("Credenciales incorrectas.");</script>';
-        } else {
-            $redirect = !empty($_POST['redirect_to']) ? esc_url_raw($_POST['redirect_to']) : home_url('/agregar-empleado');
-            wp_redirect($redirect);
-            exit;
-        }
+function ve_handle_login_request() {
+    if (empty($_POST['custom_user']) || empty($_POST['custom_pass'])) {
+        return;
     }
-});
+
+    $creds = [
+        'user_login'    => sanitize_user($_POST['custom_user']),
+        'user_password' => $_POST['custom_pass'],
+        'remember'      => true,
+    ];
+
+    $user = wp_signon($creds, false);
+    if (is_wp_error($user)) {
+        echo '<script>alert("Credenciales incorrectas.");</script>';
+        return;
+    }
+
+    $redirect = !empty($_POST['redirect_to']) ? esc_url_raw($_POST['redirect_to']) : home_url('/agregar-empleado');
+    wp_redirect($redirect);
+    exit;
+}
+add_action('init', 've_handle_login_request', 1);
 
 function ve_login_template_redirect() {
     global $wp_query;
