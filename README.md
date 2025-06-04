@@ -11,6 +11,8 @@ Al activarse se crea la tabla `wp_empleados` donde se almacenan los datos.
 ## Uso
 - Utiliza el shortcode `[agregar_empleado]` para mostrar el formulario de alta y edición.
 - Utiliza el shortcode `[verificar_empleado]` para mostrar la información del empleado a partir de su ID.
+- Utiliza el shortcode `[ve_login]` para mostrar el formulario de acceso. Tras un inicio de sesión exitoso redirige a `/agregar-empleado/`.
+- Para gestionar empleados crea una página en WordPress con la URL `/agregar-empleado/` y coloca dentro el shortcode `[agregar_empleado]`.
 
 Los códigos QR apuntan a la ruta `/verificar-empleado/{id}/` en tu sitio.
 

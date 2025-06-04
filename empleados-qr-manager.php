@@ -220,6 +220,29 @@ document.addEventListener('DOMContentLoaded', function(){
 }
 add_shortcode('verificar_empleado', 've_verificar_empleado_shortcode');
 
+// === SHORTCODE: FORMULARIO DE LOGIN ===
+add_shortcode('ve_login', function () {
+    if (is_user_logged_in()) {
+        wp_redirect(home_url('/agregar-empleado'));
+        exit;
+    }
+
+    $args = array(
+        'echo'           => true,
+        'redirect'       => home_url('/agregar-empleado'),
+        'form_id'        => 'loginform',
+        'label_username' => __('Usuario'),
+        'label_password' => __('Contraseña'),
+        'label_remember' => __('Recordarme'),
+        'label_log_in'   => __('Iniciar Sesión'),
+        'remember'       => true,
+    );
+
+    ob_start();
+    wp_login_form($args);
+    return ob_get_clean();
+});
+
 // === SHORTCODE: FORMULARIO PARA AGREGAR EMPLEADO ===
 function formulario_agregar_empleado() {
     if (!is_user_logged_in()) {
