@@ -1126,61 +1126,7 @@ button[title="Editar empleado"]:hover {
     </div>
 </div>
 
-    <script> // Llenar el select de departamento y puesto cuando se crea un usuario
-        document.addEventListener("DOMContentLoaded", function() {
-            const catalogo = window.catalogoPuestos || {};
-            const departamentos = window.catalogoDepartamentos || [];
-            const departamentoSelect = document.getElementById("departamento");
-            const puestoSelect = document.getElementById("puesto");
-
-            departamentos.forEach(dep => {
-                const option = document.createElement("option");
-                option.value = dep;
-                option.textContent = dep;
-                departamentoSelect.appendChild(option);
-            });
-
-            departamentoSelect.addEventListener("change", function() {
-                const puestos = catalogo[this.value] || [];
-                puestoSelect.innerHTML = '<option value="">Seleccione un puesto</option>';
-                puestos.forEach(puesto => {
-                    const opt = document.createElement("option");
-                    opt.value = puesto;
-                    opt.textContent = puesto;
-                    puestoSelect.appendChild(opt);
-                });
-            });
-        });
-    </script>
-
-    <script> // Llenar selects en el formulario de edición
-        document.addEventListener("DOMContentLoaded", function() {
-            const catalogo = window.catalogoPuestos || {};
-            const departamentos = window.catalogoDepartamentos || [];
-            const departamentoEdit = document.getElementById("edit_departamento");
-            const puestoEdit = document.getElementById("edit_puesto");
-
-            if (departamentoEdit && puestoEdit) {
-                departamentos.forEach(dep => {
-                    const option = document.createElement("option");
-                    option.value = dep;
-                    option.textContent = dep;
-                    departamentoEdit.appendChild(option);
-                });
-
-                departamentoEdit.addEventListener("change", function() {
-                    const puestos = catalogo[this.value] || [];
-                    puestoEdit.innerHTML = '<option value="">Editar puesto</option>';
-                    puestos.forEach(p => {
-                        const opt = document.createElement("option");
-                        opt.value = p;
-                        opt.textContent = p;
-                        puestoEdit.appendChild(opt);
-                    });
-                });
-            }
-        });
-    </script>
+    <!-- Los catálogos se cargan desde catalogo_puestos.js -->
 
     <script> // Modal para editar empleado
     
