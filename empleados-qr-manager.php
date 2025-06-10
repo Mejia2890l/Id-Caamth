@@ -1658,16 +1658,24 @@ function ve_descargar_qrs(){
         wp_die('No se pudo crear el ZIP');
     }
     foreach ($empleados as $emp) {
-        $id = intval($emp['id']);
+        $id     = intval($emp['id']);
         $nombre = sanitize_title($emp['nombre'] . '_' . $emp['numero']);
-        $url = home_url("/verificar-empleado/$id/");
-        $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$url";
-        $img = @file_get_contents($qr_url);
-        if ($img !== false) {
-            $zip->addFromString("qr_{$nombre}.png", $img);
+        $url    = home_url("/verificar-empleado/$id/");
+        $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . rawurlencode($url);
+
+        $response = wp_remote_get($qr_url);
+        if (!is_wp_error($response)) {
+            $img = wp_remote_retrieve_body($response);
+            if (!empty($img)) {
+                $zip->addFromString("qr_{$nombre}.png", $img);
+            }
         }
     }
     $zip->close();
+
+    if (ob_get_length()) {
+        ob_clean();
+    }
     header('Content-Type: application/zip');
     header('Content-Disposition: attachment; filename="qrs.zip"');
     readfile($zip_file);
