@@ -603,6 +603,7 @@ if ($empleados_lista !== null) {
     <p style="margin-top:10px;">
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_exportar_empleados') ); ?>">Exportar a Excel</a>
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_layout_empleados') ); ?>">Layout de carga</a>
+        <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_descargar_qrs') ); ?>">Descargar QRs</a>
     </p>
     <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
         <?php wp_nonce_field("ve_carga_masiva_action","ve_carga_masiva_nonce"); ?>
@@ -1642,4 +1643,35 @@ function ve_layout_empleados(){
 
 
 
+
+// === Descargar todos los QR en un ZIP ===
+add_action('wp_ajax_ve_descargar_qrs', 've_descargar_qrs');
+add_action('wp_ajax_nopriv_ve_descargar_qrs', 've_descargar_qrs');
+
+function ve_descargar_qrs(){
+    global $wpdb;
+    $tabla = $wpdb->prefix . 'empleados';
+    $empleados = $wpdb->get_results("SELECT id, numero, nombre FROM $tabla ORDER BY numero", ARRAY_A);
+    $zip_file = tempnam(sys_get_temp_dir(), 'qrs');
+    $zip = new ZipArchive();
+    if ($zip->open($zip_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+        wp_die('No se pudo crear el ZIP');
+    }
+    foreach ($empleados as $emp) {
+        $id = intval($emp['id']);
+        $nombre = sanitize_title($emp['nombre'] . '_' . $emp['numero']);
+        $url = home_url("/verificar-empleado/$id/");
+        $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$url";
+        $img = @file_get_contents($qr_url);
+        if ($img !== false) {
+            $zip->addFromString("qr_{$nombre}.png", $img);
+        }
+    }
+    $zip->close();
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="qrs.zip"');
+    readfile($zip_file);
+    @unlink($zip_file);
+    exit;
+}
 
