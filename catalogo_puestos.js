@@ -202,7 +202,7 @@ function iniciarCatalogo(departamentoId, puestoId) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    iniciarCatalogo('departamento', 'puesto');
-    iniciarCatalogo('edit_departamento', 'edit_puesto');
-});
+// Ejecutar la inicialización inmediatamente ya que este script se carga al
+// final de la página y el evento DOMContentLoaded ya ocurrió.
+iniciarCatalogo('departamento', 'puesto');
+iniciarCatalogo('edit_departamento', 'edit_puesto');
