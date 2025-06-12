@@ -927,7 +927,7 @@ button[title="Editar empleado"]:hover {
 <tbody>
 <!-- Contenido traído desde la base de datos -->
 <?php foreach ($empleados_lista as $mostrar_empleados) { ?>
-            <tr>
+            <tr data-id="<?php echo $id_empleado; ?>">
                 <td><?php echo esc_html($mostrar_empleados['numero']); ?></td>
                 <td><?php echo esc_html($mostrar_empleados['nombre']); ?></td>
                 <td><?php echo esc_html($mostrar_empleados['departamento']); ?></td>
@@ -1226,6 +1226,66 @@ button[title="Editar empleado"]:hover {
     </script>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function(){
+            const editForm = document.getElementById('editEmployeeForm');
+            if(!editForm) return;
+            editForm.addEventListener('submit', function(e){
+                e.preventDefault();
+                const formData = new FormData(editForm);
+                fetch("<?php echo admin_url('admin-ajax.php'); ?>?action=ve_actualizar_empleado", {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(resp => {
+                    if(resp.success){
+                        const emp = resp.data;
+                        const row = document.querySelector(`tr[data-id='${emp.id}']`);
+                        if(row){
+                            row.cells[1].textContent = emp.nombre;
+                            row.cells[2].textContent = emp.departamento;
+                            row.cells[3].textContent = emp.puesto;
+                            row.cells[4].textContent = emp.estatus;
+                            const verUrl = '<?php echo home_url('/verificar-empleado/'); ?>' + emp.id + '/';
+                            row.querySelector('.button-see').setAttribute('onClick', `window.open('${verUrl}', '_blank')`);
+                            const filename = formatFilename(emp.numero, emp.nombre);
+                            const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(verUrl);
+                            const qrBtn = row.querySelector('.qr-btn');
+                            if(qrBtn){
+                                qrBtn.dataset.qrUrl = qrUrl;
+                                qrBtn.dataset.filename = filename;
+                                qrBtn.setAttribute('onclick', `openQRModal('${qrUrl}', '${filename}')`);
+                            }
+                            const editBtn = row.querySelector('button[title="Editar empleado"]');
+                            if(editBtn){
+                                const jsonData = JSON.stringify(emp).replace(/"/g,'&quot;');
+                                editBtn.setAttribute('onclick', `openEditModal(${jsonData})`);
+                            }
+                            const delBtn = row.querySelector('.button-delete');
+                            if(delBtn){
+                                delBtn.dataset.id = emp.id;
+                            }
+                        }
+                        if(window.empleadosData){
+                            const idx = window.empleadosData.findIndex(e => e.id == emp.id);
+                            if(idx > -1){
+                                window.empleadosData[idx].nombre = emp.nombre;
+                            }
+                        }
+                        closeEditModal();
+                    } else {
+                        alert(resp.data || 'Error al actualizar');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error al actualizar:', err);
+                    alert('Error al actualizar');
+                });
+            });
+        });
+    </script>
+
+    <script>
 
         // Filtro por departamentos
 
@@ -1508,7 +1568,7 @@ function ve_buscar_empleado() {
             $ver_url_empleado = esc_url(home_url("/verificar-empleado/$id_empleado"));
             $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($ver_url_empleado);
             $qr_filename = "qr_" .$nombre_empleado . "_" . $numero_empleado . ".png";
-            echo '<tr>';
+            echo '<tr data-id="' . $id_empleado . '">';
             echo '<td>' . esc_html($empleado->numero) . '</td>';
             echo '<td>' . esc_html($empleado->nombre) . '</td>';
             echo '<td>' . esc_html($empleado->departamento) . '</td>';
@@ -1565,6 +1625,61 @@ function ve_get_empleado(){
         }
     }
     wp_send_json_error('Empleado no encontrado');
+}
+
+// === Actualizar empleado vía AJAX ===
+add_action('wp_ajax_ve_actualizar_empleado', 've_actualizar_empleado');
+
+function ve_actualizar_empleado(){
+    check_ajax_referer('editar_empleado_action','editar_empleado_nonce');
+
+    global $wpdb;
+    $tabla = $wpdb->prefix . 'empleados';
+
+    $id = isset($_POST['id_empleado']) ? intval($_POST['id_empleado']) : 0;
+    $nombre = sanitize_text_field($_POST['nombre']);
+    $departamento = sanitize_text_field($_POST['edit_departamento']);
+    $puesto = sanitize_text_field($_POST['edit_puesto']);
+    $estatus = sanitize_text_field($_POST['edit_estatus']);
+
+    $foto_url = $wpdb->get_var($wpdb->prepare("SELECT foto FROM $tabla WHERE id = %d", $id));
+
+    if (!empty($_POST['remove_photo'])){
+        $foto_path = str_replace(wp_upload_dir()['baseurl'], wp_upload_dir()['basedir'], $foto_url);
+        if (file_exists($foto_path)){
+            @unlink($foto_path);
+        }
+        $foto_url = '';
+    }
+
+    if (!empty($_FILES['edit_foto']['name'])) {
+        $file = $_FILES['edit_foto'];
+        $allowed = ['image/jpeg','image/png'];
+        if (in_array($file['type'],$allowed)){
+            $upload = wp_upload_bits($file['name'], null, file_get_contents($file['tmp_name']));
+            if (!$upload['error']){
+                $foto_url = esc_url_raw($upload['url']);
+            } else {
+                wp_send_json_error($upload['error']);
+            }
+        } else {
+            wp_send_json_error('Formato de imagen inválido');
+        }
+    }
+
+    $updated = $wpdb->update($tabla, [
+        'nombre' => $nombre,
+        'departamento' => $departamento,
+        'puesto' => $puesto,
+        'estatus' => $estatus,
+        'foto' => $foto_url
+    ], ['id' => $id]);
+
+    if ($updated !== false) {
+        $empleado = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tabla WHERE id = %d", $id));
+        wp_send_json_success($empleado);
+    }
+    wp_send_json_error('No se pudo actualizar');
 }
 function ve_xlsx_col($index){
     $index++;
