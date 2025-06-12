@@ -609,6 +609,7 @@ if ($empleados_lista) {
     }
 }
 echo '<script>window.empleadosData = ' . json_encode($empleados_data) . ';</script>';
+echo '<script>window.employeesList = ' . json_encode($empleados_lista) . ';</script>';
 
 ?>
 
@@ -1242,6 +1243,11 @@ button[title="Editar empleado"]:hover {
                 .then(res => res.json().catch(() => ({success:false, data:'Respuesta no válida'})))
                 .then(resp => {
                     if(resp.success){
+                        const updated = resp.data;
+                        const idx = employees.findIndex(emp => String(emp.id) === String(updated.id));
+                        if(idx !== -1){
+                            employees[idx] = updated;
+                        }
                         refreshTable();
                         closeEditModal();
                     } else {
@@ -1262,51 +1268,59 @@ button[title="Editar empleado"]:hover {
         let selectedDepartment = 'Todos';
         let selectedStatus = 'General';
         let searchQuery = '';
-        const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+        const homeUrl = '<?php echo esc_url(home_url()); ?>';
+        let employees = window.employeesList || [];
 
-        // Filtro por departamentos
+        function sanitizeFilename(nombre){
+            return nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9 ]/g,'').trim().replace(/\s+/g,'_');
+        }
 
-    function sortTableByNumero(){
-        const tbody = document.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        rows.sort((a,b)=>{
-            const numA = parseInt(a.cells[0].textContent,10);
-            const numB = parseInt(b.cells[0].textContent,10);
-            return numA - numB;
-        });
-        rows.forEach(r=>tbody.appendChild(r));
-    }
+        function createRow(emp){
+            const tr = document.createElement('tr');
+            tr.dataset.id = emp.id;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(homeUrl + '/verificar-empleado/' + emp.id + '/')}`;
+            const baseName = sanitizeFilename(emp.nombre);
+            const file = `${emp.numero}_${baseName}.png`;
+            tr.innerHTML = `
+                <td>${emp.numero}</td>
+                <td>${emp.nombre}</td>
+                <td>${emp.departamento}</td>
+                <td>${emp.puesto}</td>
+                <td>${emp.estatus}</td>
+                <td>
+                    <button type="button" class="button-see" onClick="window.open('${homeUrl}/verificar-empleado/${emp.id}/', '_blank')">Ver</button>
+                    <button type="button" title="Editar empleado" onclick='openEditModal(${JSON.stringify(emp).replace(/'/g,"&#39;")})'>Editar</button>
+                    <button type="button" class="button-delete" data-id="${emp.id}">Eliminar</button>
+                    <button type="button" class="button-download qr-btn" data-qr-url="${qrUrl}" data-filename="${file}" onClick="openQRModal('${qrUrl}', '${file}')">QR</button>
+                </td>`;
+            return tr;
+        }
 
-    function filtrarPorDepartamento(departamento){
-        selectedDepartment = departamento;
-        const rows = document.querySelectorAll("tbody tr");
+        function applyFiltersAndSort(list){
+            return list.filter(emp=>{
+                const matchDept = selectedDepartment === 'Todos' || emp.departamento === selectedDepartment;
+                const matchStatus = selectedStatus === 'General' || emp.estatus === selectedStatus;
+                const q = searchQuery.trim().toLowerCase();
+                const matchSearch = !q || emp.nombre.toLowerCase().includes(q) || String(emp.numero).includes(q);
+                return matchDept && matchStatus && matchSearch;
+            }).sort((a,b)=>parseInt(a.numero) - parseInt(b.numero));
+        }
 
-        rows.forEach(row => {
-            const cell = row.cells[2]; // Selecciona la columna dentro de la tabla creada en HTML || Indice 2 = Columna "departamento"
-            const cellDep = cell.textContent.trim();
+        function renderTable(list){
+            const tbody = document.querySelector('tbody');
+            tbody.innerHTML = '';
+            list.forEach(emp=>tbody.appendChild(createRow(emp)));
+        }
 
-            if (departamento === "Todos" || cellDep === departamento) { // Si se presiona todos los departamentos, no se aplica filtro alguno
-                row.style.display = "";
-            } else {
-                row.style.display = "none"; // Para el resto de departamentos
-            }
+        function refreshTable(){
+            const updatedList = applyFiltersAndSort(employees);
+            renderTable(updatedList);
+        }
 
-        });
-        sortTableByNumero();
-
-    }
-
-    function refreshTable(){
-        fetch(ajaxUrl + '?action=buscar_empleado&query=' + encodeURIComponent(searchQuery))
-            .then(res => res.text())
-            .then(data => {
-                const tbody = document.querySelector('tbody');
-                tbody.innerHTML = data;
-                sortTableByNumero();
-                filtrarPorDepartamento(selectedDepartment);
-                filtrarPorEstatus(selectedStatus);
-            });
-    }
+        function filtrarPorDepartamento(departamento){
+            selectedDepartment = departamento;
+            refreshTable();
+        }
     </script>
 
     <script>
@@ -1331,18 +1345,7 @@ button[title="Editar empleado"]:hover {
 
     function filtrarPorEstatus(estatus){
         selectedStatus = estatus;
-        const rows = document.querySelectorAll("tbody tr");
-
-        rows.forEach(rowEstatus => {
-            const cell = rowEstatus.cells[4]; // Columna del estatus (dentro del array es el índice 4)
-            const cellEstatus = cell.textContent.trim();
-
-            if (estatus === "General" || cellEstatus === estatus){
-                rowEstatus.style.display = "";
-            } else {
-                rowEstatus.style.display = "none"; 
-            }
-        });
+        refreshTable();
     }
 
     </script>
@@ -1368,7 +1371,7 @@ button[title="Editar empleado"]:hover {
         // Búsqueda de usuarios por nombre o número de empleado
 
         document.addEventListener('DOMContentLoaded', function() {
-            sortTableByNumero();
+            refreshTable();
             const input = document.getElementById("search-input");
 
             input.addEventListener("keyup", function() {
@@ -1394,6 +1397,8 @@ button[title="Editar empleado"]:hover {
                         if (row){
                             row.remove();
                         }
+                        employees = employees.filter(emp => String(emp.id) !== String(id));
+                        refreshTable();
                     }).catch(error => {
                         console.error('Error al eliminar:', error);
                     });
