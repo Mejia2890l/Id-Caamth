@@ -595,6 +595,19 @@ if ($empleados_lista !== null) {
     echo "Error en la consulta";
 }
 
+// Pasar datos de QR de todos los empleados a JavaScript
+$empleados_data = [];
+if ($empleados_lista) {
+    foreach ($empleados_lista as $e) {
+        $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . rawurlencode(home_url("/verificar-empleado/".$e['id']."/"));
+        $empleados_data[] = [
+            'id' => intval($e['id']),
+            'qr_url' => $qr_url
+        ];
+    }
+}
+echo '<script>window.empleadosData = ' . json_encode($empleados_data) . ';</script>';
+
 ?>
 
 <!-- Búsqueda de empleados -->
@@ -604,6 +617,7 @@ if ($empleados_lista !== null) {
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_exportar_empleados') ); ?>">Exportar a Excel</a>
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_layout_empleados') ); ?>">Layout de carga</a>
         <button type="button" id="btn-download-all" class="button-download">Descargar QRs</button>
+        <span id="qr-progress" style="margin-left:10px;"></span>
     </p>
     <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
         <?php wp_nonce_field("ve_carga_masiva_action","ve_carga_masiva_nonce"); ?>
@@ -1327,34 +1341,30 @@ button[title="Editar empleado"]:hover {
 
     </script>
 
-    <script> // Función que permite la descarga del código QR
-        function descargarQR(url, filename){
-            const img = new Image(); // En producción, se debe generar una imagen para poder realizar la descarga del QR
-            img.crossOrigin = "Anonymous";
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                canvas.toBlob(function(blob) {
-                    const blobUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = blobUrl;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(blobUrl);
-                }, 'image/png');
-            };
-
-            img.onerror = function() {
-                console.error('No se pudo cargar la imagen del QR');
-            };
-
-            img.src = url + '&cache_buster=' + new Date().getTime(); // No se cachea 
-            
+    <script> // Función que permite obtener el blob del código QR
+        function descargarQR(url){
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = function(){
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    canvas.toBlob(function(blob){
+                        if(blob){
+                            resolve(blob);
+                        }else{
+                            reject(new Error('No se pudo generar el blob'));
+                        }
+                    }, 'image/png');
+                };
+                img.onerror = function(){
+                    reject(new Error('No se pudo cargar la imagen del QR'));
+                };
+                img.src = url + '&cache_buster=' + new Date().getTime();
+            });
         }
     </script>
 
@@ -1363,30 +1373,41 @@ button[title="Editar empleado"]:hover {
     <script>
         document.addEventListener('DOMContentLoaded', function(){
             const bulkBtn = document.getElementById('btn-download-all');
-            const selector = window.qrSelector || '.qr-code-img';
+            const progress = document.getElementById('qr-progress');
             if (bulkBtn){
                 bulkBtn.addEventListener('click', async function(){
-                    const images = document.querySelectorAll(selector);
-                    if (!images.length){
-                        alert('No se encontraron QRs.');
+                    const empleados = window.empleadosData || [];
+                    if (!empleados.length){
+                        alert('No hay QRs para descargar.');
                         return;
                     }
                     const zip = new JSZip();
                     const folder = zip.folder('QRCodes');
-                    let i = 1;
-                    try {
-                        for (const img of images){
-                            const res = await fetch(img.src);
-                            if(!res.ok) throw new Error(res.statusText);
-                            const blob = await res.blob();
-                            folder.file(`qr_${i}.png`, blob);
-                            i++;
+                    let fallidos = 0;
+                    for (let i=0; i<empleados.length; i++){
+                        const emp = empleados[i];
+                        progress.textContent = `Descargando ${i+1} de ${empleados.length}...`;
+                        try {
+                            const blob = await descargarQR(emp.qr_url);
+                            folder.file(`qr_${emp.id}.png`, blob);
+                        } catch(err){
+                            console.error('Error QR', emp.id, err);
+                            fallidos++;
                         }
+                    }
+                    progress.textContent = 'Generando ZIP...';
+                    try {
                         const content = await zip.generateAsync({type:'blob'});
                         saveAs(content, 'Todos_los_QRs.zip');
                     } catch(err){
                         console.error('Error al generar ZIP:', err);
-                        alert('Ocurrió un error al descargar los QRs.');
+                        alert('Ocurrió un error al generar el ZIP.');
+                        progress.textContent = '';
+                        return;
+                    }
+                    progress.textContent = '';
+                    if(fallidos){
+                        alert(`No se pudieron descargar ${fallidos} QRs`);
                     }
                 });
             }
@@ -1409,7 +1430,8 @@ button[title="Editar empleado"]:hover {
 
         document.getElementById('qrDownloadBtn').addEventListener('click', function(){
             const img = document.getElementById('qrImage');
-            descargarQR(img.src, document.getElementById('qrModal').dataset.filename);
+            const filename = document.getElementById('qrModal').dataset.filename;
+            descargarQR(img.src).then(blob => saveAs(blob, filename));
         });
 
         document.getElementById('qrCloseBtn').addEventListener('click', function(){
