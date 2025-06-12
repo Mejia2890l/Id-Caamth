@@ -603,7 +603,7 @@ if ($empleados_lista !== null) {
     <p style="margin-top:10px;">
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_exportar_empleados') ); ?>">Exportar a Excel</a>
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_layout_empleados') ); ?>">Layout de carga</a>
-        <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_descargar_qrs') ); ?>">Descargar QRs</a>
+        <button type="button" id="download-all-qrs" class="button-download">Descargar QRs</button>
     </p>
     <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
         <?php wp_nonce_field("ve_carga_masiva_action","ve_carga_masiva_nonce"); ?>
@@ -929,7 +929,7 @@ button[title="Editar empleado"]:hover {
                     <button type="button" class="button-see" onClick="window.open('<?php echo $ver_url_empleado; ?>', '_blank')">Ver</button>
                     <button type="button" title="Editar empleado" onclick="openEditModal(<?php echo $json_empleado; ?>)">Editar</button>
                     <button type="button" class="button-delete" data-id="<?php echo $id_empleado; ?>">Eliminar</button>
-                    <button type="button" class="button-download" onClick="openQRModal('<?php echo $qr_url; ?>', 'qr_<?php echo $nombre_empleado?>_<?php echo $numero_empleado; ?>.png')">QR</button>
+                    <button type="button" class="button-download qr-btn" data-qr-url="<?php echo $qr_url; ?>" data-filename="qr_<?php echo $nombre_empleado?>_<?php echo $numero_empleado; ?>.png" onClick="openQRModal('<?php echo $qr_url; ?>', 'qr_<?php echo $nombre_empleado?>_<?php echo $numero_empleado; ?>.png')">QR</button>
                 </td>
             </tr>
 <?php } ?>
@@ -1345,7 +1345,7 @@ button[title="Editar empleado"]:hover {
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                    URL.revokeObjectURL(blobURL);
+                    URL.revokeObjectURL(blobUrl);
                 }, 'image/png');
             };
 
@@ -1356,6 +1356,24 @@ button[title="Editar empleado"]:hover {
             img.src = url + '&cache_buster=' + new Date().getTime(); // No se cachea 
             
         }
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){
+            const bulkBtn = document.getElementById('download-all-qrs');
+            if (bulkBtn){
+                bulkBtn.addEventListener('click', function(){
+                    const btns = document.querySelectorAll('button.qr-btn');
+                    btns.forEach(function(b){
+                        const url = b.getAttribute('data-qr-url');
+                        const name = b.getAttribute('data-filename');
+                        if(url && name){
+                            descargarQR(url, name);
+                        }
+                    });
+                });
+            }
+        });
     </script>
 
     <script>
@@ -1423,7 +1441,7 @@ function ve_buscar_empleado() {
                     <button type="button" class="button-see" onClick="window.open(\''. esc_url(home_url("/verificar-empleado/". $empleado->id. "/")).'\', \'_blank\')">Ver</button>
                     <button type="button" title="Editar empleado" onclick=\'openEditModal(' . $json_empleado . ')\'>Editar</button>
                     <button type="button" class="button-delete" data-id="' . esc_attr($empleado->id) . '">Eliminar</button>
-                    <button type="button" class="button-download" onclick="openQRModal(\'' . esc_url($qr_url) . '\', \'' . esc_attr($qr_filename) . '\')">QR</button>
+                    <button type="button" class="button-download qr-btn" data-qr-url="' . esc_url($qr_url) . '" data-filename="' . esc_attr($qr_filename) . '" onclick="openQRModal(\'' . esc_url($qr_url) . '\', \'' . esc_attr($qr_filename) . '\')">QR</button>
                   </td>';
             echo '</tr>';
         }
