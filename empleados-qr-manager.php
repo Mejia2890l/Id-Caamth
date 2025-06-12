@@ -927,7 +927,7 @@ button[title="Editar empleado"]:hover {
 <tbody>
 <!-- Contenido traído desde la base de datos -->
 <?php foreach ($empleados_lista as $mostrar_empleados) { ?>
-            <tr data-id="<?php echo $id_empleado; ?>">
+            <tr data-id="<?php echo intval($mostrar_empleados['id']); ?>">
                 <td><?php echo esc_html($mostrar_empleados['numero']); ?></td>
                 <td><?php echo esc_html($mostrar_empleados['nombre']); ?></td>
                 <td><?php echo esc_html($mostrar_empleados['departamento']); ?></td>
@@ -1239,42 +1239,11 @@ button[title="Editar empleado"]:hover {
                 .then(res => res.json())
                 .then(resp => {
                     if(resp.success){
-                        const emp = resp.data;
-                        const row = document.querySelector(`tr[data-id='${emp.id}']`);
-                        if(row){
-                            row.cells[1].textContent = emp.nombre;
-                            row.cells[2].textContent = emp.departamento;
-                            row.cells[3].textContent = emp.puesto;
-                            row.cells[4].textContent = emp.estatus;
-                            const verUrl = '<?php echo home_url('/verificar-empleado/'); ?>' + emp.id + '/';
-                            row.querySelector('.button-see').setAttribute('onClick', `window.open('${verUrl}', '_blank')`);
-                            const filename = formatFilename(emp.numero, emp.nombre);
-                            const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(verUrl);
-                            const qrBtn = row.querySelector('.qr-btn');
-                            if(qrBtn){
-                                qrBtn.dataset.qrUrl = qrUrl;
-                                qrBtn.dataset.filename = filename;
-                                qrBtn.setAttribute('onclick', `openQRModal('${qrUrl}', '${filename}')`);
-                            }
-                            const editBtn = row.querySelector('button[title="Editar empleado"]');
-                            if(editBtn){
-                                const jsonData = JSON.stringify(emp).replace(/"/g,'&quot;');
-                                editBtn.setAttribute('onclick', `openEditModal(${jsonData})`);
-                            }
-                            const delBtn = row.querySelector('.button-delete');
-                            if(delBtn){
-                                delBtn.dataset.id = emp.id;
-                            }
-                        }
-                        if(window.empleadosData){
-                            const idx = window.empleadosData.findIndex(e => e.id == emp.id);
-                            if(idx > -1){
-                                window.empleadosData[idx].nombre = emp.nombre;
-                            }
-                        }
+                        console.log("Empleado actualizado", resp.data);
+                        refreshTable();
                         closeEditModal();
                     } else {
-                        alert(resp.data || 'Error al actualizar');
+                        alert(resp.data || "Error al actualizar");
                     }
                 })
                 .catch(err => {
@@ -1286,6 +1255,12 @@ button[title="Editar empleado"]:hover {
     </script>
 
     <script>
+
+        // Variables de estado para filtros y búsqueda
+        let selectedDepartment = 'Todos';
+        let selectedStatus = 'General';
+        let searchQuery = '';
+        const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
 
         // Filtro por departamentos
 
@@ -1301,6 +1276,7 @@ button[title="Editar empleado"]:hover {
     }
 
     function filtrarPorDepartamento(departamento){
+        selectedDepartment = departamento;
         const rows = document.querySelectorAll("tbody tr");
 
         rows.forEach(row => {
@@ -1316,6 +1292,18 @@ button[title="Editar empleado"]:hover {
         });
         sortTableByNumero();
 
+    }
+
+    function refreshTable(){
+        fetch(ajaxUrl + '?action=buscar_empleado&query=' + encodeURIComponent(searchQuery))
+            .then(res => res.text())
+            .then(data => {
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = data;
+                sortTableByNumero();
+                filtrarPorDepartamento(selectedDepartment);
+                filtrarPorEstatus(selectedStatus);
+            });
     }
     </script>
 
@@ -1340,6 +1328,7 @@ button[title="Editar empleado"]:hover {
     <script> // Filtro por estatus
 
     function filtrarPorEstatus(estatus){
+        selectedStatus = estatus;
         const rows = document.querySelectorAll("tbody tr");
 
         rows.forEach(rowEstatus => {
@@ -1381,15 +1370,8 @@ button[title="Editar empleado"]:hover {
             const input = document.getElementById("search-input");
 
             input.addEventListener("keyup", function() {
-                const query = input.value;
-
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>?action=buscar_empleado&query='+encodeURIComponent(query)). // Consulta para seleccionar el usuario
-                then(response => response.text())
-                .then(data => {
-                    const tbody = document.querySelector("tbody");
-                    tbody.innerHTML = data;
-                    sortTableByNumero();
-                });
+                searchQuery = input.value;
+                refreshTable();
             });
         });
     </script>
