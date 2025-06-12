@@ -1363,14 +1363,20 @@ button[title="Editar empleado"]:hover {
             const bulkBtn = document.getElementById('download-all-qrs');
             if (bulkBtn){
                 bulkBtn.addEventListener('click', function(){
-                    const btns = document.querySelectorAll('button.qr-btn');
-                    btns.forEach(function(b){
-                        const url = b.getAttribute('data-qr-url');
-                        const name = b.getAttribute('data-filename');
-                        if(url && name){
-                            descargarQR(url, name);
-                        }
-                    });
+                    const zipUrl = '<?php echo admin_url('admin-ajax.php?action=ve_descargar_qrs'); ?>';
+                    fetch(zipUrl)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const blobUrl = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = blobUrl;
+                            a.download = 'qrs.zip';
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            URL.revokeObjectURL(blobUrl);
+                        })
+                        .catch(err => console.error('Error al descargar ZIP:', err));
                 });
             }
         });
