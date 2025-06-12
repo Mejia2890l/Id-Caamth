@@ -438,7 +438,7 @@ if (isset($_POST['guardar_empleado']) && check_admin_referer('guardar_empleado_a
         echo '<p style="color: green; font-size: 18px;">Empleado agregado correctamente.</p>';
         echo "<p><strong>Enlace directo:</strong><br> <a href='$url' target='_blank'>$url</a></p>";
         echo "<p><strong>QR para verificar:</strong><br>";
-        echo "<img src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$url' alt='QR del empleado'></p>";
+        echo "<img class='qr-code-img' src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$url' alt='QR del empleado'></p>";
     }
 
     // Editar empleado
@@ -603,7 +603,7 @@ if ($empleados_lista !== null) {
     <p style="margin-top:10px;">
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_exportar_empleados') ); ?>">Exportar a Excel</a>
         <a class="button-download" href="<?php echo esc_url( admin_url('admin-ajax.php?action=ve_layout_empleados') ); ?>">Layout de carga</a>
-        <button type="button" id="download-all-qrs" class="button-download">Descargar QRs</button>
+        <button type="button" id="btn-download-all" class="button-download">Descargar QRs</button>
     </p>
     <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
         <?php wp_nonce_field("ve_carga_masiva_action","ve_carga_masiva_nonce"); ?>
@@ -1358,25 +1358,36 @@ button[title="Editar empleado"]:hover {
         }
     </script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function(){
-            const bulkBtn = document.getElementById('download-all-qrs');
+            const bulkBtn = document.getElementById('btn-download-all');
+            const selector = window.qrSelector || '.qr-code-img';
             if (bulkBtn){
-                bulkBtn.addEventListener('click', function(){
-                    const zipUrl = '<?php echo admin_url('admin-ajax.php?action=ve_descargar_qrs'); ?>';
-                    fetch(zipUrl)
-                        .then(response => response.blob())
-                        .then(blob => {
-                            const blobUrl = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = blobUrl;
-                            a.download = 'qrs.zip';
-                            document.body.appendChild(a);
-                            a.click();
-                            a.remove();
-                            URL.revokeObjectURL(blobUrl);
-                        })
-                        .catch(err => console.error('Error al descargar ZIP:', err));
+                bulkBtn.addEventListener('click', async function(){
+                    const images = document.querySelectorAll(selector);
+                    if (!images.length){
+                        alert('No se encontraron QRs.');
+                        return;
+                    }
+                    const zip = new JSZip();
+                    const folder = zip.folder('QRCodes');
+                    let i = 1;
+                    try {
+                        for (const img of images){
+                            const res = await fetch(img.src);
+                            if(!res.ok) throw new Error(res.statusText);
+                            const blob = await res.blob();
+                            folder.file(`qr_${i}.png`, blob);
+                            i++;
+                        }
+                        const content = await zip.generateAsync({type:'blob'});
+                        saveAs(content, 'Todos_los_QRs.zip');
+                    } catch(err){
+                        console.error('Error al generar ZIP:', err);
+                        alert('Ocurrió un error al descargar los QRs.');
+                    }
                 });
             }
         });
