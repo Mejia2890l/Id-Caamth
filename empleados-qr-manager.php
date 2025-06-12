@@ -584,7 +584,7 @@ if (isset($_POST['guardar_empleado']) && check_admin_referer('guardar_empleado_a
 $total_empleados = $wpdb->get_var("SELECT COUNT(*) FROM $tabla");
 $total_empleados_activos = $wpdb->get_var("SELECT COUNT(*) FROM $tabla WHERE estatus = 'Activo'");
 $total_empleados_inactivos = $wpdb->get_var("SELECT COUNT(*) FROM $tabla WHERE estatus = 'Inactivo'");
-$empleados_lista = $wpdb->get_results("SELECT * FROM $tabla ORDER BY numero", ARRAY_A);
+$empleados_lista = $wpdb->get_results("SELECT * FROM $tabla ORDER BY CAST(numero AS UNSIGNED)", ARRAY_A);
 if ($empleados_lista !== null) {
     echo '<div style="display:flex; gap:15px; flex-wrap:wrap; margin-bottom:20px;">';
     echo '<div style="flex:1; min-width:150px; border:1px solid #ccc; padding:10px; border-radius:6px;">Total de empleados: ' . esc_html($total_empleados) . '</div>';
@@ -1229,6 +1229,17 @@ button[title="Editar empleado"]:hover {
 
         // Filtro por departamentos
 
+    function sortTableByNumero(){
+        const tbody = document.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a,b)=>{
+            const numA = parseInt(a.cells[0].textContent,10);
+            const numB = parseInt(b.cells[0].textContent,10);
+            return numA - numB;
+        });
+        rows.forEach(r=>tbody.appendChild(r));
+    }
+
     function filtrarPorDepartamento(departamento){
         const rows = document.querySelectorAll("tbody tr");
 
@@ -1243,6 +1254,7 @@ button[title="Editar empleado"]:hover {
             }
 
         });
+        sortTableByNumero();
 
     }
     </script>
@@ -1305,6 +1317,7 @@ button[title="Editar empleado"]:hover {
         // Búsqueda de usuarios por nombre o número de empleado
 
         document.addEventListener('DOMContentLoaded', function() {
+            sortTableByNumero();
             const input = document.getElementById("search-input");
 
             input.addEventListener("keyup", function() {
@@ -1315,6 +1328,7 @@ button[title="Editar empleado"]:hover {
                 .then(data => {
                     const tbody = document.querySelector("tbody");
                     tbody.innerHTML = data;
+                    sortTableByNumero();
                 });
             });
         });
@@ -1466,12 +1480,24 @@ function ve_buscar_empleado() {
 
     $query = isset($_GET['query']) ? sanitize_text_field($_GET['query']) : '';
 
-    // Buscar por número o nombre (parcial)
-    $resultados = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $tabla WHERE numero LIKE %s OR nombre LIKE %s ORDER BY numero",
-        '%' . $query . '%',
-        '%' . $query . '%'
-    ));
+    if ($query === '') {
+        // Sin término de búsqueda: obtener todos
+        $resultados = $wpdb->get_results("SELECT * FROM $tabla ORDER BY CAST(numero AS UNSIGNED)");
+    } elseif (is_numeric($query)) {
+        // Búsqueda exacta por número
+        $resultados = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $tabla WHERE numero = %d ORDER BY CAST(numero AS UNSIGNED)",
+            intval($query)
+        ));
+    } else {
+        // Búsqueda parcial por nombre o número
+        $like = '%' . $wpdb->esc_like($query) . '%';
+        $resultados = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $tabla WHERE numero LIKE %s OR nombre LIKE %s ORDER BY CAST(numero AS UNSIGNED)",
+            $like,
+            $like
+        ));
+    }
 
     if ($resultados) {
         foreach ($resultados as $empleado) {
