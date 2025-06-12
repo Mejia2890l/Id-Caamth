@@ -1219,8 +1219,11 @@ button[title="Editar empleado"]:hover {
             document.getElementById('new_foto_preview').style.display = 'none';
             document.getElementById('new_foto_preview').src = '';
             document.getElementById('new_foto_label').style.display = 'none';
-            removePhotoCheckbox.checked = false;
-            removePhotoContainer.style.display = 'none';
+
+            const removePhotoCheckbox = document.getElementById('remove_photo');
+            if(removePhotoCheckbox) removePhotoCheckbox.checked = false;
+            const removePhotoContainer = document.getElementById('remove_photo_container');
+            if(removePhotoContainer) removePhotoContainer.style.display = 'none';
         }
 
     </script>
@@ -1236,19 +1239,18 @@ button[title="Editar empleado"]:hover {
                     method: 'POST',
                     body: formData
                 })
-                .then(res => res.json())
+                .then(res => res.json().catch(() => ({success:false, data:'Respuesta no válida'})))
                 .then(resp => {
                     if(resp.success){
-                        console.log("Empleado actualizado", resp.data);
                         refreshTable();
                         closeEditModal();
                     } else {
-                        alert(resp.data || "Error al actualizar");
+                        alert('No se pudo actualizar: ' + (resp.data || 'Error desconocido'));
                     }
                 })
                 .catch(err => {
                     console.error('Error al actualizar:', err);
-                    alert('Error al actualizar');
+                    alert('No se pudo actualizar: ' + err.message);
                 });
             });
         });
