@@ -601,8 +601,10 @@ if ($empleados_lista) {
     foreach ($empleados_lista as $e) {
         $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . rawurlencode(home_url("/verificar-empleado/".$e['id']."/"));
         $empleados_data[] = [
-            'id' => intval($e['id']),
-            'qr_url' => $qr_url
+            'id'     => intval($e['id']),
+            'qr_url' => $qr_url,
+            'numero' => $e['numero'],
+            'nombre' => $e['nombre']
         ];
     }
 }
@@ -934,16 +936,19 @@ button[title="Editar empleado"]:hover {
                 <td>
                     <?php
                         $json_empleado = htmlspecialchars(json_encode($mostrar_empleados), ENT_QUOTES, 'UTF-8');
-                        $id_empleado = intval($mostrar_empleados['id']);
-                        $numero_empleado = intval($mostrar_empleados['numero']);
-                        $nombre_empleado = htmlspecialchars($mostrar_empleados['nombre']);
+                        $id_empleado      = intval($mostrar_empleados['id']);
+                        $numero_empleado  = intval($mostrar_empleados['numero']);
+                        $nombre_empleado  = htmlspecialchars($mostrar_empleados['nombre']);
+                        $base_filename    = $numero_empleado . '_' . remove_accents($mostrar_empleados['nombre']);
+                        $base_filename    = preg_replace('/[^A-Za-z0-9 ]/', '', $base_filename);
+                        $base_filename    = str_replace(' ', '_', trim($base_filename));
                         $ver_url_empleado = esc_url(home_url("/verificar-empleado/$id_empleado/"));
                         $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=$ver_url_empleado";
                     ?>
                     <button type="button" class="button-see" onClick="window.open('<?php echo $ver_url_empleado; ?>', '_blank')">Ver</button>
                     <button type="button" title="Editar empleado" onclick="openEditModal(<?php echo $json_empleado; ?>)">Editar</button>
                     <button type="button" class="button-delete" data-id="<?php echo $id_empleado; ?>">Eliminar</button>
-                    <button type="button" class="button-download qr-btn" data-qr-url="<?php echo $qr_url; ?>" data-filename="qr_<?php echo $nombre_empleado?>_<?php echo $numero_empleado; ?>.png" onClick="openQRModal('<?php echo $qr_url; ?>', 'qr_<?php echo $nombre_empleado?>_<?php echo $numero_empleado; ?>.png')">QR</button>
+                        <button type="button" class="button-download qr-btn" data-qr-url="<?php echo $qr_url; ?>" data-filename="<?php echo $base_filename; ?>.png" onClick="openQRModal('<?php echo $qr_url; ?>', '<?php echo $base_filename; ?>.png')">QR</button>
                 </td>
             </tr>
 <?php } ?>
@@ -1371,6 +1376,12 @@ button[title="Editar empleado"]:hover {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script>
+        function formatFilename(numero, nombre){
+            const normalized = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const cleaned = normalized.replace(/[^A-Za-z0-9 ]/g, '');
+            const underscored = cleaned.trim().replace(/\s+/g, '_');
+            return `${numero}_${underscored}.png`;
+        }
         document.addEventListener('DOMContentLoaded', function(){
             const bulkBtn = document.getElementById('btn-download-all');
             const progress = document.getElementById('qr-progress');
@@ -1389,7 +1400,8 @@ button[title="Editar empleado"]:hover {
                         progress.textContent = `Descargando ${i+1} de ${empleados.length}...`;
                         try {
                             const blob = await descargarQR(emp.qr_url);
-                            folder.file(`qr_${emp.id}.png`, blob);
+                            const filename = formatFilename(emp.numero, emp.nombre);
+                            folder.file(filename, blob);
                         } catch(err){
                             console.error('Error QR', emp.id, err);
                             fallidos++;
@@ -1660,17 +1672,19 @@ function ve_descargar_qrs(){
     if ($zip->open($zip_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
         wp_die('No se pudo crear el ZIP');
     }
-    foreach ($empleados as $emp) {
-        $id     = intval($emp['id']);
-        $nombre = sanitize_title($emp['nombre'] . '_' . $emp['numero']);
-        $url    = home_url("/verificar-empleado/$id/");
-        $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . rawurlencode($url);
+        foreach ($empleados as $emp) {
+            $id     = intval($emp['id']);
+            $base   = $emp['numero'] . '_' . remove_accents($emp['nombre']);
+            $base   = preg_replace('/[^A-Za-z0-9 ]/', '', $base);
+            $nombre = str_replace(' ', '_', trim($base));
+            $url    = home_url("/verificar-empleado/$id/");
+            $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . rawurlencode($url);
 
         $response = wp_remote_get($qr_url);
         if (!is_wp_error($response)) {
             $img = wp_remote_retrieve_body($response);
             if (!empty($img)) {
-                $zip->addFromString("qr_{$nombre}.png", $img);
+                $zip->addFromString("{$nombre}.png", $img);
             }
         }
     }
